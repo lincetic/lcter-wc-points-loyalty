@@ -1,0 +1,35 @@
+# WordPress
+/wp-admin/
+/wp-includes/
+/wp-content/uploads/
+wp-config.php
+.htaccess
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Dependencies
+node_modules/
+vendor/
+composer.lock
+
+# Logs
+*.log
+debug.log
+
+# Package managers
+package-lock.json
+yarn.lock
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Build artifacts
+/build/
+/dist/

@@ -1,0 +1,35 @@
+/* LCTER WC Points Loyalty - Frontend Styles */
+
+.lcter-wcpl-dashboard-section {
+    background: #f9f9f9;
+    border: 1px solid #e5e5e5;
+    padding: 15px 20px;
+    margin: 20px 0;
+    border-radius: 3px;
+}
+
+.lcter-wcpl-dashboard-section h2 {
+    margin-top: 0;
+    font-size: 1.3em;
+}
+
+.lcter-wcpl-points-display {
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+.lcter-wcpl-points-label {
+    font-size: 0.9em;
+    opacity: 0.9;
+    margin-bottom: 10px;
+}
+
+.lcter-wcpl-points-value {
+    font-size: 2.5em;
+    font-weight: bold;
+    margin: 0;
+}
