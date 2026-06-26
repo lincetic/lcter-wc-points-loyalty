@@ -12,12 +12,15 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 
 global $wpdb;
 
-// Drop custom tables.
-$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}lcter_wcpl_customer_points" );
-$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}lcter_wcpl_transactions" );
-$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}lcter_wcpl_product_points" );
+$remove_data = get_option( 'lcter_wcpl_remove_data_on_uninstall', '0' );
 
-// Delete plugin options.
-delete_option( 'lcter_wcpl_default_points_rate' );
-delete_option( 'lcter_wcpl_points_expiry_days' );
-delete_option( 'lcter_wcpl_enable_notifications' );
+if ( '1' === $remove_data ) {
+	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}lcter_wcpl_customer_points" );
+	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}lcter_wcpl_transactions" );
+	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}lcter_wcpl_rewards" );
+	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}lcter_wcpl_order_rewards" );
+
+	delete_option( 'lcter_wcpl_points_expiry_days' );
+	delete_option( 'lcter_wcpl_enable_notifications' );
+	delete_option( 'lcter_wcpl_remove_data_on_uninstall' );
+}

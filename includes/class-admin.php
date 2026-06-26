@@ -33,6 +33,7 @@ class Admin {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
 		}
+
 		return self::$instance;
 	}
 
@@ -47,24 +48,14 @@ class Admin {
 	/**
 	 * Register plugin settings.
 	 */
-	private function register_settings() {
-		register_setting(
-			'lcter_wcpl_settings_group',
-			'lcter_wcpl_default_points_rate',
-			array(
-				'type'              => 'number',
-				'sanitize_callback' => 'floatval',
-				'default'           => 1,
-			)
-		);
-
+	private function register_settings(): void {
 		register_setting(
 			'lcter_wcpl_settings_group',
 			'lcter_wcpl_points_expiry_days',
 			array(
 				'type'              => 'integer',
 				'sanitize_callback' => 'intval',
-				'default'           => 0, // 0 = never expires.
+				'default'           => 0,
 			)
 		);
 
@@ -79,21 +70,33 @@ class Admin {
 				'default'           => '1',
 			)
 		);
+
+		register_setting(
+			'lcter_wcpl_settings_group',
+			'lcter_wcpl_remove_data_on_uninstall',
+			array(
+				'type'              => 'boolean',
+				'sanitize_callback' => function( $value ) {
+					return '1' === $value ? '1' : '0';
+				},
+				'default'           => '0',
+			)
+		);
 	}
 
 	/**
 	 * Register admin hooks.
 	 */
-	private function register_hooks() {
+	private function register_hooks(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
 		add_action( 'woocommerce_product_data_panels', array( $this, 'product_panel' ) );
-		add_action( 'woocommerce_process_product_meta', array( $this, 'save_product_points' ) );
+		add_action( 'woocommerce_process_product_meta', array( $this, 'save_reward_product' ) );
 	}
 
 	/**
 	 * Enqueue admin assets.
 	 */
-	public function enqueue_admin_assets() {
+	public function enqueue_admin_assets(): void {
 		wp_enqueue_style(
 			'lcter-wcpl-admin',
 			LCTER_WCPL_PLUGIN_URL . 'assets/css/admin.css',
@@ -113,34 +116,32 @@ class Admin {
 	/**
 	 * Render dashboard page.
 	 */
-	public static function render_dashboard() {
+	public static function render_dashboard(): void {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			wp_die( esc_html__( 'No tienes permiso para acceder a esta página.', 'lcter-wc-points-loyalty' ) );
+			wp_die( esc_html__( 'No tienes permiso para acceder a esta pagina.', LCTER_WCPL_TEXT_DOMAIN ) );
 		}
 
-		global $wpdb;
-
-		$total_customers = $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}lcter_wcpl_customer_points" );
-		$total_points_issued = $wpdb->get_var( "SELECT SUM(total_earned) FROM {$wpdb->prefix}lcter_wcpl_customer_points" );
-		$total_points_redeemed = $wpdb->get_var( "SELECT SUM(total_redeemed) FROM {$wpdb->prefix}lcter_wcpl_customer_points" );
+		$total_customers       = Database::get_total_customers();
+		$total_points_issued   = Database::get_total_points_issued();
+		$total_points_redeemed = Database::get_total_points_redeemed();
 
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'Panel de Control - LCTER Points Loyalty', 'lcter-wc-points-loyalty' ); ?></h1>
+			<h1><?php esc_html_e( 'Panel de Control - LCTER Points Loyalty', LCTER_WCPL_TEXT_DOMAIN ); ?></h1>
 
 			<div class="lcter-wcpl-dashboard">
 				<div class="stat-box">
-					<h3><?php esc_html_e( 'Clientes Activos', 'lcter-wc-points-loyalty' ); ?></h3>
+					<h3><?php esc_html_e( 'Clientes Activos', LCTER_WCPL_TEXT_DOMAIN ); ?></h3>
 					<p class="stat-value"><?php echo intval( $total_customers ); ?></p>
 				</div>
 
 				<div class="stat-box">
-					<h3><?php esc_html_e( 'Puntos Emitidos', 'lcter-wc-points-loyalty' ); ?></h3>
+					<h3><?php esc_html_e( 'Puntos Emitidos', LCTER_WCPL_TEXT_DOMAIN ); ?></h3>
 					<p class="stat-value"><?php echo intval( $total_points_issued ); ?></p>
 				</div>
 
 				<div class="stat-box">
-					<h3><?php esc_html_e( 'Puntos Canjeados', 'lcter-wc-points-loyalty' ); ?></h3>
+					<h3><?php esc_html_e( 'Puntos Canjeados', LCTER_WCPL_TEXT_DOMAIN ); ?></h3>
 					<p class="stat-value"><?php echo intval( $total_points_redeemed ); ?></p>
 				</div>
 			</div>
@@ -151,55 +152,35 @@ class Admin {
 	/**
 	 * Render settings page.
 	 */
-	public static function render_settings() {
+	public static function render_settings(): void {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			wp_die( esc_html__( 'No tienes permiso para acceder a esta página.', 'lcter-wc-points-loyalty' ) );
+			wp_die( esc_html__( 'No tienes permiso para acceder a esta pagina.', LCTER_WCPL_TEXT_DOMAIN ) );
 		}
 
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'Configuración - LCTER Points Loyalty', 'lcter-wc-points-loyalty' ); ?></h1>
+			<h1><?php esc_html_e( 'Configuracion - LCTER Points Loyalty', LCTER_WCPL_TEXT_DOMAIN ); ?></h1>
 
 			<form method="post" action="options.php">
 				<?php settings_fields( 'lcter_wcpl_settings_group' ); ?>
-				<?php do_settings_sections( 'lcter_wcpl_settings_group' ); ?>
 
-				<table class="form-table">
-					<tr>
-						<th scope="row">
-							<label for="lcter_wcpl_default_points_rate">
-								<?php esc_html_e( 'Puntos por Unidad de Moneda', 'lcter-wc-points-loyalty' ); ?>
-							</label>
-						</th>
-						<td>
-							<input type="number" 
-								id="lcter_wcpl_default_points_rate" 
-								name="lcter_wcpl_default_points_rate" 
-								value="<?php echo esc_attr( get_option( 'lcter_wcpl_default_points_rate', 1 ) ); ?>" 
-								step="0.01" 
-								min="0"
-							/>
-							<p class="description">
-								<?php esc_html_e( 'Número de puntos que gana el cliente por cada unidad de moneda gastada.', 'lcter-wc-points-loyalty' ); ?>
-							</p>
-						</td>
-					</tr>
-
+				<table class="form-table" role="presentation">
 					<tr>
 						<th scope="row">
 							<label for="lcter_wcpl_points_expiry_days">
-								<?php esc_html_e( 'Días de Expiración de Puntos', 'lcter-wc-points-loyalty' ); ?>
+								<?php esc_html_e( 'Dias de Expiracion de Puntos', LCTER_WCPL_TEXT_DOMAIN ); ?>
 							</label>
 						</th>
 						<td>
-							<input type="number" 
-								id="lcter_wcpl_points_expiry_days" 
-								name="lcter_wcpl_points_expiry_days" 
-								value="<?php echo esc_attr( get_option( 'lcter_wcpl_points_expiry_days', 0 ) ); ?>" 
+							<input
+								type="number"
+								id="lcter_wcpl_points_expiry_days"
+								name="lcter_wcpl_points_expiry_days"
+								value="<?php echo esc_attr( get_option( 'lcter_wcpl_points_expiry_days', 0 ) ); ?>"
 								min="0"
 							/>
 							<p class="description">
-								<?php esc_html_e( 'Número de días antes de que expiren los puntos (0 = nunca expiran).', 'lcter-wc-points-loyalty' ); ?>
+								<?php esc_html_e( 'Numero de dias antes de que expiren los puntos (0 = nunca expiran).', LCTER_WCPL_TEXT_DOMAIN ); ?>
 							</p>
 						</td>
 					</tr>
@@ -207,18 +188,39 @@ class Admin {
 					<tr>
 						<th scope="row">
 							<label for="lcter_wcpl_enable_notifications">
-								<?php esc_html_e( 'Habilitar Notificaciones', 'lcter-wc-points-loyalty' ); ?>
+								<?php esc_html_e( 'Habilitar Notificaciones', LCTER_WCPL_TEXT_DOMAIN ); ?>
 							</label>
 						</th>
 						<td>
-							<input type="checkbox" 
-								id="lcter_wcpl_enable_notifications" 
-								name="lcter_wcpl_enable_notifications" 
+							<input
+								type="checkbox"
+								id="lcter_wcpl_enable_notifications"
+								name="lcter_wcpl_enable_notifications"
 								value="1"
 								<?php checked( get_option( 'lcter_wcpl_enable_notifications', '1' ), '1' ); ?>
 							/>
 							<p class="description">
-								<?php esc_html_e( 'Enviar notificaciones a los clientes cuando ganen o canjeen puntos.', 'lcter-wc-points-loyalty' ); ?>
+								<?php esc_html_e( 'Enviar notificaciones a los clientes cuando ganen o canjeen puntos.', LCTER_WCPL_TEXT_DOMAIN ); ?>
+							</p>
+						</td>
+					</tr>
+
+					<tr>
+						<th scope="row">
+							<label for="lcter_wcpl_remove_data_on_uninstall">
+								<?php esc_html_e( 'Eliminar datos en desinstalacion', LCTER_WCPL_TEXT_DOMAIN ); ?>
+							</label>
+						</th>
+						<td>
+							<input
+								type="checkbox"
+								id="lcter_wcpl_remove_data_on_uninstall"
+								name="lcter_wcpl_remove_data_on_uninstall"
+								value="1"
+								<?php checked( get_option( 'lcter_wcpl_remove_data_on_uninstall', '0' ), '1' ); ?>
+							/>
+							<p class="description">
+								<?php esc_html_e( 'Elimina los datos del plugin solo si esta activada esta opcion.', LCTER_WCPL_TEXT_DOMAIN ); ?>
 							</p>
 						</td>
 					</tr>
@@ -231,10 +233,12 @@ class Admin {
 	}
 
 	/**
-	 * Add product points panel in product edit page.
+	 * Add reward panel in product edit page.
 	 */
-	public function product_panel() {
+	public function product_panel(): void {
 		global $post;
+
+		$reward = $post ? Database::get_reward_by_product( (int) $post->ID ) : null;
 
 		?>
 		<div id="lcter_wcpl_product_panel" class="panel woocommerce_options_panel">
@@ -242,13 +246,41 @@ class Admin {
 				<?php
 				woocommerce_wp_text_input(
 					array(
-						'id'          => 'lcter_wcpl_product_points_rate',
-						'label'       => __( 'Puntos por Unidad de Moneda', 'lcter-wc-points-loyalty' ),
-						'description' => __( 'Dejar en blanco para usar la tasa por defecto.', 'lcter-wc-points-loyalty' ),
-						'type'        => 'number',
+						'id'                => 'lcter_wcpl_reward_points_cost',
+						'label'             => __( 'Coste del Regalo en Puntos', LCTER_WCPL_TEXT_DOMAIN ),
+						'description'       => __( 'Dejar en blanco o 0 para que este producto no sea un regalo.', LCTER_WCPL_TEXT_DOMAIN ),
+						'type'              => 'number',
+						'value'             => $reward ? (int) $reward['points_cost'] : '',
 						'custom_attributes' => array(
-							'step' => '0.01',
+							'step' => '1',
 							'min'  => '0',
+						),
+					)
+				);
+
+				woocommerce_wp_text_input(
+					array(
+						'id'                => 'lcter_wcpl_reward_sort_order',
+						'label'             => __( 'Orden del Regalo', LCTER_WCPL_TEXT_DOMAIN ),
+						'type'              => 'number',
+						'value'             => $reward ? (int) $reward['sort_order'] : 0,
+						'custom_attributes' => array(
+							'step' => '1',
+						),
+					)
+				);
+
+				woocommerce_wp_text_input(
+					array(
+						'id'                => 'lcter_wcpl_reward_active',
+						'label'             => __( 'Regalo Activo', LCTER_WCPL_TEXT_DOMAIN ),
+						'description'       => __( '1 = activo, 0 = inactivo.', LCTER_WCPL_TEXT_DOMAIN ),
+						'type'              => 'number',
+						'value'             => $reward ? (int) $reward['active'] : 1,
+						'custom_attributes' => array(
+							'step' => '1',
+							'min'  => '0',
+							'max'  => '1',
 						),
 					)
 				);
@@ -259,14 +291,11 @@ class Admin {
 	}
 
 	/**
-	 * Save product points configuration.
+	 * Save reward product configuration.
 	 *
 	 * @param int $product_id Product ID.
 	 */
-	public function save_product_points( $product_id ) {
-		global $wpdb;
-
-		// Validate nonce and capability.
+	public function save_reward_product( $product_id ): void {
 		if ( ! isset( $_POST['woocommerce_meta_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['woocommerce_meta_nonce'] ) ), 'woocommerce_save_data' ) ) {
 			return;
 		}
@@ -275,26 +304,26 @@ class Admin {
 			return;
 		}
 
-		$points_rate = isset( $_POST['lcter_wcpl_product_points_rate'] ) ? sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_product_points_rate'] ) ) : '';
+		$product_id  = (int) $product_id;
+		$points_cost = isset( $_POST['lcter_wcpl_reward_points_cost'] ) ? absint( wp_unslash( $_POST['lcter_wcpl_reward_points_cost'] ) ) : 0;
+		$reward      = Database::get_reward_by_product( $product_id );
 
-		if ( '' === $points_rate ) {
-			// Delete custom rate if empty.
-			$wpdb->delete(
-				"{$wpdb->prefix}lcter_wcpl_product_points",
-				array( 'product_id' => $product_id ),
-				array( '%d' )
-			);
-		} else {
-			$points_rate = (float) $points_rate;
-
-			$wpdb->replace(
-				"{$wpdb->prefix}lcter_wcpl_product_points",
-				array(
-					'product_id'         => $product_id,
-					'points_per_currency' => $points_rate,
-				),
-				array( '%d', '%f' )
-			);
+		if ( $points_cost <= 0 ) {
+			if ( $reward ) {
+				Database::delete_reward( (int) $reward['id'] );
+			}
+			return;
 		}
+
+		Database::save_reward(
+			array(
+				'id'          => $reward ? (int) $reward['id'] : 0,
+				'product_id'  => $product_id,
+				'points_cost' => $points_cost,
+				'active'      => isset( $_POST['lcter_wcpl_reward_active'] ) ? absint( wp_unslash( $_POST['lcter_wcpl_reward_active'] ) ) : 1,
+				'sort_order'  => isset( $_POST['lcter_wcpl_reward_sort_order'] ) ? (int) wp_unslash( $_POST['lcter_wcpl_reward_sort_order'] ) : 0,
+			)
+		);
 	}
+
 }
