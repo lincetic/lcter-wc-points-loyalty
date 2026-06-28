@@ -2,10 +2,10 @@
 /**
  * Plugin Name: LCTER WC Points Loyalty
  * Plugin URI: https://lincetic.es/
- * Description: Sistema de puntos por compra pagada para WooCommerce con regalos canjeables.
+ * Description: Professional WooCommerce loyalty points system with configurable reward catalog.
  * Version: 0.1.0
  * Author: Eddie Rapallo
- * License: GPL-2.0+
+ * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: lcter-wc-points-loyalty
  * Domain Path: /languages

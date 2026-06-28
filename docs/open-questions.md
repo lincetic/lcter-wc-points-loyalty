@@ -44,6 +44,5 @@ Este documento recoge aspectos no definidos en `AGENTS.md`, `docs/business-rules
 1. ¿El plugin debe soportar multisitio?
 2. ¿Debe haber WP-CLI para bonus inicial, mantenimiento o exportaciones?
 3. ¿Se requiere compatibilidad con HPOS de WooCommerce?
-4. ¿Debe normalizarse la notación de licencia de la cabecera PHP de `GPL-2.0+` a `GPL-2.0-or-later`, aunque ambas expresen GPL 2.0 o posterior?
-5. ¿Qué nivel de PHPStan se debe usar?
-6. ¿Qué conjunto exacto de reglas de WP Coding Standards se aplicará?
+4. ¿Qué nivel de PHPStan se debe usar?
+5. ¿Qué conjunto exacto de reglas de WP Coding Standards se aplicará?
