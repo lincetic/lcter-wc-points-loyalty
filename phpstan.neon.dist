@@ -1,0 +1,13 @@
+includes:
+    - vendor/szepeviktor/phpstan-wordpress/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - includes
+        - lcter-wc-points-loyalty.php
+        - uninstall.php
+    excludePaths:
+        analyse:
+            - vendor
+    treatPhpDocTypesAsCertain: false

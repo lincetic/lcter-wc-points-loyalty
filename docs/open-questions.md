@@ -31,6 +31,14 @@ Este documento recoge aspectos no definidos en `AGENTS.md`, `docs/business-rules
 4. ¿Quién puede hacer ajustes manuales de puntos?
 5. ¿Debe existir exportación CSV?
 
+## Hallazgos De Estabilizacion
+
+1. Resuelta: la API legacy `Rewards::redeem_reward_for_order()` se conserva deprecada, devuelve `false` y no tiene efectos laterales.
+2. Resuelta parcialmente: pedido e items usan `reward_selected` y muestran `REGALO PENDIENTE DE PAGO`; queda por decidir si ademas debe bloquearse tecnicamente una transicion manual de estado o el flujo logistico externo.
+3. ¿Debe declararse formalmente compatibilidad HPOS y añadirse una matriz automatizada para almacenamiento clasico y HPOS?
+
+Decisiones iniciales ya tomadas: PHPStan comienza en nivel 5; PHPCS aplica `WordPress`, `WordPress-Extra` y `WordPress-Docs`.
+
 ## Clientify
 
 1. ¿Clientify leerá datos desde una API, webhook, exportación CSV, metadatos del pedido o acceso directo a datos?

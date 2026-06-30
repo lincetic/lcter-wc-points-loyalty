@@ -107,6 +107,18 @@ Estado: completado para UC-008 como preparación interna.
 * Payload interno neutral para futuras integraciones: completado.
 * API, webhook, CSV y sincronización real con Clientify: pendientes y fuera de esta fase.
 
+## Estabilizacion Tecnica Tras Fases 2-5
+
+Estado: base completada; quedan validaciones de integracion.
+
+* Separacion de administracion general, editor de rewards y trazabilidad de pedido: completada.
+* Auditoria de SQL, entradas, salidas y hooks: completada; no se detecta SQL de negocio fuera de repositorios.
+* PHPUnit basico con pruebas de idempotencia y saldo: configurado.
+* PHPStan nivel 5 y PHPCS con WordPress Coding Standards: configurados.
+* Adaptador y fachada de canje legacy: deprecados y convertidos en rutas seguras sin efectos laterales.
+* Estado operativo `reward_selected` / `reward_redeemed` y señalizacion de regalos pendientes: completados.
+* Division del adaptador de checkout y pruebas de integracion/concurrencia: pendientes.
+
 ## Fase 6 - Bonus Inicial
 
 Objetivo: registrar el saldo inicial documentado.
@@ -130,3 +142,5 @@ Incluye:
 * Pruebas de integración con WooCommerce.
 * Revisión de seguridad.
 * Entorno recomendado con Docker y WP-CLI.
+
+Estado parcial: configuraciones y primera suite unitaria añadidas; integracion WooCommerce, concurrencia, HPOS y reduccion progresiva de incidencias de analisis estatico siguen pendientes.

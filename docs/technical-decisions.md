@@ -243,6 +243,20 @@ Motivo:
 * Los Checkout Blocks requieren una integración Store API y componentes específicos.
 * La API externa y REST están fuera del alcance solicitado para esta fase.
 
+## Anexo - Estabilizacion Tecnica
+
+Decision: la administracion general, la configuracion del reward en producto y la trazabilidad del pedido se registran en clases independientes. `Admin` ya no mezcla ajustes, catalogo y lectura de canjes.
+
+No se divide aun el adaptador de checkout: sus 490 lineas son deuda tecnica conocida, pero extraerlo durante esta estabilizacion aumentaria el riesgo sobre el flujo de pago.
+
+PHPStan comienza en nivel 5; PHPCS aplica `WordPress`, `WordPress-Extra` y `WordPress-Docs`; PHPUnit comienza con pruebas unitarias de servicios sin arrancar WordPress. Los hooks, la base de datos y la concurrencia requieren integracion WordPress/WooCommerce.
+
+`WooCommerce_Rewards_Adapter::redeem_reward_for_order()` y `Rewards::redeem_reward_for_order()` conservan firma y tipo de retorno por compatibilidad, pero quedan deprecados y cerrados de forma segura: emiten `_deprecated_function()`, devuelven `false` y no modifican saldo, pedido ni trazabilidad. El unico flujo de canje soportado es el procesamiento idempotente del pedido pagado.
+
+El flujo soportado sigue siendo `WooCommerce_Checkout_Adapter` junto con `Reward_Redemption_Service`.
+
+Los regalos creados durante checkout tienen `_lcter_wcpl_reward_state=reward_selected` en pedido y order item. En ese estado el metadato visible indica `REGALO: PENDIENTE DE PAGO` y administracion muestra que no deben prepararse ni entregarse. Solo despues de completar descuento y `order_rewards` el estado cambia a `reward_redeemed` y el item muestra `REGALO: CANJEADO`. Si el canje falla, permanece seleccionado; si se rechaza y se retiran las lineas, el estado se elimina.
+
 ## TD-022 - Servicio De Trazabilidad Neutral
 
 Decisión: `Reward_Traceability_Service` concentra las consultas de regalos canjeados y genera payloads internos neutrales por pedido o cliente.

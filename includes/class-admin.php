@@ -8,8 +8,6 @@
 namespace LCTER_WCPL;
 
 use LCTER_WCPL\Services\Points_Service as Application_Points_Service;
-use LCTER_WCPL\Services\Reward_Traceability_Service;
-use LCTER_WCPL\Services\Rewards_Service;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -93,10 +91,6 @@ class Admin {
 	 */
 	private function register_hooks(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
-		add_filter( 'woocommerce_product_data_tabs', array( $this, 'product_tab' ) );
-		add_action( 'woocommerce_product_data_panels', array( $this, 'product_panel' ) );
-		add_action( 'woocommerce_process_product_meta', array( $this, 'save_reward_product' ) );
-		add_action( 'woocommerce_admin_order_data_after_payment_info', array( $this, 'render_order_rewards' ), 20, 1 );
 	}
 
 	/**
@@ -187,7 +181,7 @@ class Admin {
 								min="0"
 							/>
 							<p class="description">
-								<?php esc_html_e( 'Numero de dias antes de que expiren los puntos (0 = nunca expiran).', LCTER_WCPL_TEXT_DOMAIN ); ?>
+								<?php esc_html_e( 'Configuracion reservada: la caducidad todavia no esta implementada (0 = nunca expiran).', LCTER_WCPL_TEXT_DOMAIN ); ?>
 							</p>
 						</td>
 					</tr>
@@ -207,7 +201,7 @@ class Admin {
 								<?php checked( get_option( 'lcter_wcpl_enable_notifications', '1' ), '1' ); ?>
 							/>
 							<p class="description">
-								<?php esc_html_e( 'Enviar notificaciones a los clientes cuando ganen o canjeen puntos.', LCTER_WCPL_TEXT_DOMAIN ); ?>
+								<?php esc_html_e( 'Configuracion reservada: las notificaciones todavia no estan implementadas.', LCTER_WCPL_TEXT_DOMAIN ); ?>
 							</p>
 						</td>
 					</tr>
@@ -240,277 +234,38 @@ class Admin {
 	}
 
 	/**
-	 * Render redeemed reward traceability in the WooCommerce order screen.
-	 *
-	 * @param mixed $order WooCommerce order.
-	 */
-	public function render_order_rewards( $order ): void {
-		if ( ! $order || ! is_callable( array( $order, 'get_id' ) ) ) {
-			return;
-		}
-
-		$order_id = (int) $order->get_id();
-		if ( ! current_user_can( 'edit_shop_order', $order_id ) && ! current_user_can( 'manage_woocommerce' ) ) {
-			return;
-		}
-
-		$traceability = new Reward_Traceability_Service();
-		$rewards     = $traceability->get_rewards_by_order( $order_id );
-		$total_points = array_sum( array_column( $rewards, 'points_cost_total' ) );
-
-		?>
-		<div class="lcter-wcpl-order-rewards">
-			<h3><?php esc_html_e( 'Regalos canjeados', LCTER_WCPL_TEXT_DOMAIN ); ?></h3>
-			<p class="description">
-				<?php esc_html_e( 'Fuente principal: tabla de trazabilidad de rewards del plugin.', LCTER_WCPL_TEXT_DOMAIN ); ?>
-			</p>
-
-			<?php if ( empty( $rewards ) ) : ?>
-				<p><?php esc_html_e( 'Este pedido no tiene regalos canjeados registrados.', LCTER_WCPL_TEXT_DOMAIN ); ?></p>
-			<?php else : ?>
-				<table class="widefat striped">
-					<thead>
-						<tr>
-							<th><?php esc_html_e( 'Producto', LCTER_WCPL_TEXT_DOMAIN ); ?></th>
-							<th><?php esc_html_e( 'SKU', LCTER_WCPL_TEXT_DOMAIN ); ?></th>
-							<th><?php esc_html_e( 'Cantidad', LCTER_WCPL_TEXT_DOMAIN ); ?></th>
-							<th><?php esc_html_e( 'Puntos/unidad', LCTER_WCPL_TEXT_DOMAIN ); ?></th>
-							<th><?php esc_html_e( 'Puntos totales', LCTER_WCPL_TEXT_DOMAIN ); ?></th>
-							<th><?php esc_html_e( 'Fecha', LCTER_WCPL_TEXT_DOMAIN ); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<?php foreach ( $rewards as $reward ) : ?>
-							<tr>
-								<td><?php echo esc_html( $reward['product_name'] ); ?></td>
-								<td><?php echo esc_html( $reward['sku'] ?: '—' ); ?></td>
-								<td><?php echo esc_html( number_format_i18n( $reward['quantity'] ) ); ?></td>
-								<td><?php echo esc_html( number_format_i18n( $reward['points_cost_each'] ) ); ?></td>
-								<td><?php echo esc_html( number_format_i18n( $reward['points_cost_total'] ) ); ?></td>
-								<td><?php echo esc_html( $this->format_traceability_date( $reward['created_at'] ) ); ?></td>
-							</tr>
-						<?php endforeach; ?>
-					</tbody>
-					<tfoot>
-						<tr>
-							<th colspan="4"><?php esc_html_e( 'Total canjeado', LCTER_WCPL_TEXT_DOMAIN ); ?></th>
-							<th><?php echo esc_html( number_format_i18n( $total_points ) ); ?></th>
-							<th></th>
-						</tr>
-					</tfoot>
-				</table>
-			<?php endif; ?>
-		</div>
-		<?php
-	}
-
-	private function format_traceability_date( string $datetime ): string {
-		if ( '' === $datetime ) {
-			return '—';
-		}
-
-		$formatted = mysql2date(
-			get_option( 'date_format' ) . ' ' . get_option( 'time_format' ),
-			$datetime,
-			true
-		);
-
-		return $formatted ?: $datetime;
-	}
-
-	/**
-	 * Add the loyalty tab to WooCommerce product data.
+	 * Backward-compatible proxy for the reward product tab.
 	 *
 	 * @param array $tabs Product data tabs.
 	 * @return array
 	 */
 	public function product_tab( array $tabs ): array {
-		$tabs['lcter_wcpl_reward'] = array(
-			'label'    => __( 'Puntos de Lealtad', LCTER_WCPL_TEXT_DOMAIN ),
-			'target'   => 'lcter_wcpl_product_panel',
-			'class'    => array(),
-			'priority' => 80,
-		);
-
-		return $tabs;
+		return Admin_UI\Reward_Product_Admin::instance()->product_tab( $tabs );
 	}
 
 	/**
-	 * Add reward panel in product edit page.
+	 * Backward-compatible proxy for the reward product panel.
 	 */
 	public function product_panel(): void {
-		global $post;
-
-		$rewards_service = new Rewards_Service();
-		$reward           = $post ? $rewards_service->get_reward_by_product( (int) $post->ID ) : null;
-
-		?>
-		<div id="lcter_wcpl_product_panel" class="panel woocommerce_options_panel">
-			<div class="options_group">
-				<?php
-				woocommerce_wp_checkbox(
-					array(
-						'id'          => 'lcter_wcpl_is_reward',
-						'label'       => __( 'Regalo canjeable', LCTER_WCPL_TEXT_DOMAIN ),
-						'description' => __( 'Activa la configuración de este producto como reward.', LCTER_WCPL_TEXT_DOMAIN ),
-						'value'       => $reward ? 'yes' : 'no',
-					)
-				);
-
-				woocommerce_wp_text_input(
-					array(
-						'id'                => 'lcter_wcpl_reward_points_cost',
-						'label'             => __( 'Coste del Regalo en Puntos', LCTER_WCPL_TEXT_DOMAIN ),
-						'description'       => __( 'Introduce el coste manualmente. Referencia documentada: precio con IVA incluido × 2.000.', LCTER_WCPL_TEXT_DOMAIN ),
-						'type'              => 'number',
-						'value'             => $reward ? (int) $reward['points_cost'] : '',
-						'wrapper_class'     => 'lcter-wcpl-reward-field',
-						'custom_attributes' => array(
-							'step' => '1',
-							'min'  => '1',
-						),
-					)
-				);
-
-				woocommerce_wp_checkbox(
-					array(
-						'id'            => 'lcter_wcpl_reward_active',
-						'label'         => __( 'Regalo activo', LCTER_WCPL_TEXT_DOMAIN ),
-						'description'   => __( 'Permite mostrar el reward cuando también cumple sus fechas de disponibilidad.', LCTER_WCPL_TEXT_DOMAIN ),
-						'value'         => ! $reward || ! empty( $reward['active'] ) ? 'yes' : 'no',
-						'wrapper_class' => 'lcter-wcpl-reward-field',
-					)
-				);
-
-				woocommerce_wp_text_input(
-					array(
-						'id'                => 'lcter_wcpl_reward_sort_order',
-						'label'             => __( 'Orden del Regalo', LCTER_WCPL_TEXT_DOMAIN ),
-						'type'              => 'number',
-						'value'             => $reward ? (int) $reward['sort_order'] : 0,
-						'wrapper_class'     => 'lcter-wcpl-reward-field',
-						'custom_attributes' => array(
-							'step' => '1',
-						),
-					)
-				);
-
-				woocommerce_wp_text_input(
-					array(
-						'id'                => 'lcter_wcpl_reward_starts_at',
-						'label'             => __( 'Disponible desde', LCTER_WCPL_TEXT_DOMAIN ),
-						'description'       => __( 'Opcional. Fecha y hora local de inicio de disponibilidad.', LCTER_WCPL_TEXT_DOMAIN ),
-						'type'              => 'datetime-local',
-						'value'             => $this->format_reward_datetime_for_input( $reward['starts_at'] ?? null ),
-						'wrapper_class'     => 'lcter-wcpl-reward-field',
-						'custom_attributes' => array(
-							'step' => '60',
-						),
-					)
-				);
-
-				woocommerce_wp_text_input(
-					array(
-						'id'                => 'lcter_wcpl_reward_ends_at',
-						'label'             => __( 'Disponible hasta', LCTER_WCPL_TEXT_DOMAIN ),
-						'description'       => __( 'Opcional. Fecha y hora local de fin de disponibilidad.', LCTER_WCPL_TEXT_DOMAIN ),
-						'type'              => 'datetime-local',
-						'value'             => $this->format_reward_datetime_for_input( $reward['ends_at'] ?? null ),
-						'wrapper_class'     => 'lcter-wcpl-reward-field',
-						'custom_attributes' => array(
-							'step' => '60',
-						),
-					)
-				);
-				?>
-			</div>
-		</div>
-		<?php
+		Admin_UI\Reward_Product_Admin::instance()->product_panel();
 	}
 
 	/**
-	 * Save reward product configuration.
+	 * Backward-compatible proxy for saving reward product fields.
 	 *
 	 * @param int $product_id Product ID.
 	 */
 	public function save_reward_product( $product_id ): void {
-		if ( ! isset( $_POST['woocommerce_meta_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['woocommerce_meta_nonce'] ) ), 'woocommerce_save_data' ) ) {
-			return;
-		}
-
-		if ( ! current_user_can( 'edit_post', $product_id ) ) {
-			return;
-		}
-
-		$product_id = absint( $product_id );
-		$service    = new Rewards_Service();
-		$reward     = $service->get_reward_by_product( $product_id );
-		$is_reward  = isset( $_POST['lcter_wcpl_is_reward'] ) && 'yes' === sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_is_reward'] ) );
-
-		if ( ! $is_reward ) {
-			if ( $reward ) {
-				$service->delete_reward( (int) $reward['id'] );
-			}
-			return;
-		}
-
-		$points_cost = isset( $_POST['lcter_wcpl_reward_points_cost'] ) ? absint( sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_reward_points_cost'] ) ) ) : 0;
-		$active      = isset( $_POST['lcter_wcpl_reward_active'] ) && 'yes' === sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_reward_active'] ) ) ? 1 : 0;
-		$sort_order  = isset( $_POST['lcter_wcpl_reward_sort_order'] ) ? (int) sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_reward_sort_order'] ) ) : 0;
-		$starts_at   = $this->get_reward_datetime_from_request( 'lcter_wcpl_reward_starts_at' );
-		$ends_at     = $this->get_reward_datetime_from_request( 'lcter_wcpl_reward_ends_at' );
-
-		if ( $points_cost <= 0 || false === $starts_at || false === $ends_at || ( $starts_at && $ends_at && $starts_at > $ends_at ) ) {
-			return;
-		}
-
-		$service->save_reward(
-			array(
-				'id'          => $reward ? (int) $reward['id'] : 0,
-				'product_id'  => $product_id,
-				'points_cost' => $points_cost,
-				'active'      => $active,
-				'sort_order'  => $sort_order,
-				'starts_at'   => $starts_at,
-				'ends_at'     => $ends_at,
-			)
-		);
+		Admin_UI\Reward_Product_Admin::instance()->save_reward_product( $product_id );
 	}
 
 	/**
-	 * Format a stored MySQL datetime for a datetime-local field.
-	 */
-	private function format_reward_datetime_for_input( ?string $datetime ): string {
-		if ( ! $datetime ) {
-			return '';
-		}
-
-		$date = \DateTimeImmutable::createFromFormat( '!Y-m-d H:i:s', $datetime );
-
-		return $date && $date->format( 'Y-m-d H:i:s' ) === $datetime ? $date->format( 'Y-m-d\TH:i' ) : '';
-	}
-
-	/**
-	 * Read and validate one explicit datetime-local request field.
+	 * Backward-compatible proxy for order reward traceability.
 	 *
-	 * @return string|false|null Canonical MySQL datetime, false if invalid, null if empty.
+	 * @param mixed $order WooCommerce order.
 	 */
-	private function get_reward_datetime_from_request( string $field ) {
-		if ( ! isset( $_POST[ $field ] ) ) {
-			return null;
-		}
-
-		$value = sanitize_text_field( wp_unslash( $_POST[ $field ] ) );
-		if ( '' === $value ) {
-			return null;
-		}
-
-		$date = \DateTimeImmutable::createFromFormat( '!Y-m-d\TH:i', $value );
-		if ( ! $date || $date->format( 'Y-m-d\TH:i' ) !== $value ) {
-			return false;
-		}
-
-		return $date->format( 'Y-m-d H:i:s' );
+	public function render_order_rewards( $order ): void {
+		Admin_UI\Order_Traceability_Admin::instance()->render_order_rewards( $order );
 	}
 
 }

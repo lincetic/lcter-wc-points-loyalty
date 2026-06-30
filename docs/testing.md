@@ -216,6 +216,42 @@ Herramientas documentadas:
 * Docker
 * WP-CLI
 
+## Base Automatizada De Calidad
+
+Configuracion inicial disponible:
+
+* `composer.json`: dependencias y scripts de calidad.
+* `phpunit.xml.dist`: suite unitaria sin arrancar WordPress.
+* `phpstan.neon.dist`: nivel inicial 5 con extensiones de WordPress.
+* `phpcs.xml.dist`: reglas WordPress, WordPress-Extra y WordPress-Docs.
+* `tests/Unit/PointsServiceTest.php`: saldo negativo, saldos anterior/posterior e idempotencia de `earned_order` y `redeemed_order`.
+
+Comandos desde la raiz del plugin:
+
+```bash
+composer install
+composer test
+composer phpstan
+composer phpcs
+composer qa
+```
+
+La suite unitaria cubre servicios aislados. Siguen siendo necesarias pruebas de integracion en WordPress/WooCommerce para concurrencia, HPOS y hooks de pago.
+
+## Pruebas Manuales De Estabilizacion
+
+1. Ejecutar dos veces cada hook de pago y confirmar una sola fila `earned_order:{order_id}` y una sola `redeemed_order:{order_id}`.
+2. Dejar un pedido con rewards en `pending` y confirmar que no existe descuento; no debe prepararse ni enviarse antes del pago.
+3. Cambiar coste o disponibilidad antes del pago y confirmar estado `rejected` y retirada de la linea REGALO.
+4. Fallar al insertar una fila de `order_rewards`; reintentar y confirmar que no se descuenta de nuevo y se completa la trazabilidad.
+5. Confirmar que un invitado no acumula ni puede canjear.
+6. Manipular campos en checkout clasico y confirmar revalidacion contra base de datos; un nonce invalido no debe modificar el carrito.
+7. Confirmar que no se registran hooks de bonus, reembolsos, caducidad, REST, webhooks ni Clientify.
+8. Invocar `Rewards::redeem_reward_for_order()` y `WooCommerce_Rewards_Adapter::redeem_reward_for_order()`; ambos deben emitir aviso deprecado, devolver `false` y no cambiar saldo, lineas ni `order_rewards`.
+9. Crear un pedido impagado con reward y confirmar `_lcter_wcpl_reward_state=reward_selected` en pedido e item, `REGALO: PENDIENTE DE PAGO` y el aviso administrativo de no preparacion.
+10. Completar el pago y confirmar que, solo tras transaccion y trazabilidad correctas, pedido e item cambian a `reward_redeemed` y `REGALO: CANJEADO`.
+11. Simular `processing_error` y confirmar que el estado permanece `reward_selected`; rechazar el canje y confirmar que las lineas se retiran y el estado del pedido se elimina.
+
 ## Requisitos De Compatibilidad A Validar
 
 Según los ficheros actuales de documentación:

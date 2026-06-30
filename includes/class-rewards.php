@@ -7,7 +7,6 @@
 
 namespace LCTER_WCPL;
 
-use LCTER_WCPL\Adapters\WooCommerce_Rewards_Adapter;
 use LCTER_WCPL\Services\Reward_Traceability_Service;
 use LCTER_WCPL\Services\Rewards_Service;
 
@@ -75,7 +74,20 @@ class Rewards {
 		return $order && ( new Rewards_Service() )->order_total_meets_minimum( (float) $order->get_total() );
 	}
 
+	/**
+	 * Legacy immediate redemption entrypoint.
+	 *
+	 * @deprecated 0.1.0 Use the paid-order checkout flow instead.
+	 */
 	public static function redeem_reward_for_order( int $customer_id, $order, int $reward_id, int $quantity = 1 ): bool {
-		return ( new WooCommerce_Rewards_Adapter() )->redeem_reward_for_order( $customer_id, $order, $reward_id, $quantity );
+		unset( $customer_id, $order, $reward_id, $quantity );
+
+		_deprecated_function(
+			__METHOD__,
+			'0.1.0',
+			'Reward_Redemption_Service mediante los hooks de pago del checkout'
+		);
+
+		return false;
 	}
 }

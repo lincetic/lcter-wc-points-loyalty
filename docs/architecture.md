@@ -106,7 +106,11 @@ La implementación separa físicamente y por responsabilidad:
 * `includes/repositories/`: acceso SQL a `customer_points`, `transactions`, `rewards` y `order_rewards`, más el límite técnico de transacciones.
 * `includes/services/`: coordinación de casos de aplicación y reglas que no dependen de objetos WooCommerce.
 * `includes/adapters/`: traducción de pedidos, productos y order items WooCommerce.
-* `includes/class-admin.php`: capa administrativa, inicializada únicamente mediante `admin_init` y consumidora de servicios.
+* `includes/class-admin.php`: dashboard, ajustes y assets administrativos.
+* `includes/admin/class-reward-product-admin.php`: campos y persistencia del reward en la edición de producto.
+* `includes/admin/class-order-traceability-admin.php`: visualización de `order_rewards` en el pedido.
+
+Las tres clases administrativas se inicializan únicamente mediante `admin_init` y consumen servicios. `Admin` conserva proxies de los métodos públicos anteriores para compatibilidad, pero los hooks se registran solo en las clases especializadas.
 
 `Database` queda limitado a nombres de tabla, instalación, versión y migración de esquema. Las clases públicas `Points`, `Points_Service`, `Rewards` y `WooCommerce` se conservan como fachadas de compatibilidad.
 

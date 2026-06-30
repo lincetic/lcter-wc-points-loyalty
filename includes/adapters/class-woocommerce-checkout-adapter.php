@@ -20,6 +20,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 class WooCommerce_Checkout_Adapter {
 	const NONCE_ACTION = 'lcter_wcpl_checkout_rewards';
 	const NONCE_NAME   = 'lcter_wcpl_rewards_nonce';
+	const REWARD_STATE_SELECTED = 'reward_selected';
+	const REWARD_STATE_REDEEMED = 'reward_redeemed';
 
 	private Reward_Redemption_Service $redemption;
 	private Rewards_Service $rewards;
@@ -229,8 +231,9 @@ class WooCommerce_Checkout_Adapter {
 		$item->set_subtotal_tax( 0 );
 		$item->set_total_tax( 0 );
 		$item->set_taxes( array( 'subtotal' => array(), 'total' => array() ) );
-		$item->add_meta_data( 'REGALO', __( 'Sí', LCTER_WCPL_TEXT_DOMAIN ), true );
+		$item->add_meta_data( 'REGALO', __( 'PENDIENTE DE PAGO', LCTER_WCPL_TEXT_DOMAIN ), true );
 		$item->add_meta_data( '_lcter_wcpl_is_reward', '1', true );
+		$item->add_meta_data( '_lcter_wcpl_reward_state', self::REWARD_STATE_SELECTED, true );
 		$item->add_meta_data( '_lcter_wcpl_reward_id', (int) $values['_lcter_wcpl_reward_id'], true );
 		$item->add_meta_data( '_lcter_wcpl_points_cost_each', (int) $values['_lcter_wcpl_points_cost_each'], true );
 		$item->add_meta_data( '_lcter_wcpl_points_cost_total', (int) $values['_lcter_wcpl_points_cost_total'], true );
@@ -267,6 +270,7 @@ class WooCommerce_Checkout_Adapter {
 		}
 
 		$order->update_meta_data( '_lcter_wcpl_has_rewards', '1' );
+		$order->update_meta_data( '_lcter_wcpl_reward_state', self::REWARD_STATE_SELECTED );
 		$order->update_meta_data( '_lcter_wcpl_reward_selection', array_values( $selection ) );
 		$order->update_meta_data( '_lcter_wcpl_reward_points_total', $total_points );
 		$order->update_meta_data( '_lcter_wcpl_redemption_eligible_subtotal', $this->get_eligible_subtotal_cents( $cart ) );
@@ -319,16 +323,19 @@ class WooCommerce_Checkout_Adapter {
 			$order_item = $order->get_item( (int) $reward_item['order_item_id'] );
 			if ( $order_item && $record_id > 0 ) {
 				$order_item->update_meta_data( '_lcter_wcpl_order_reward_id', $record_id );
+				$order_item->update_meta_data( '_lcter_wcpl_reward_state', self::REWARD_STATE_REDEEMED );
+				$order_item->update_meta_data( 'REGALO', __( 'CANJEADO', LCTER_WCPL_TEXT_DOMAIN ) );
 				$order_item->save();
 			}
 
 			$trace[] = array_merge(
 				$reward_item,
-				array( 'order_reward_id' => $record_id, 'label' => 'REGALO' )
+				array( 'order_reward_id' => $record_id, 'label' => 'REGALO CANJEADO' )
 			);
 		}
 
 		$order->update_meta_data( '_lcter_wcpl_order_rewards', $trace );
+		$order->update_meta_data( '_lcter_wcpl_reward_state', self::REWARD_STATE_REDEEMED );
 		$order->update_meta_data( '_lcter_wcpl_reward_redemption_status', 'completed' );
 		$order->add_order_note( __( 'Canje de puntos registrado correctamente.', LCTER_WCPL_TEXT_DOMAIN ) );
 		$order->save();
@@ -468,6 +475,7 @@ class WooCommerce_Checkout_Adapter {
 		}
 
 		$order->update_meta_data( '_lcter_wcpl_reward_redemption_status', 'rejected' );
+		$order->delete_meta_data( '_lcter_wcpl_reward_state' );
 		$order->add_order_note( $message );
 		$order->calculate_totals();
 		$order->save();

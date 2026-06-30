@@ -94,7 +94,11 @@ class Loader {
 	 */
 	public function admin_init(): void {
 		require_once LCTER_WCPL_INCLUDES_DIR . 'class-admin.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'admin/class-reward-product-admin.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'admin/class-order-traceability-admin.php';
 		Admin::instance();
+		Admin_UI\Reward_Product_Admin::instance();
+		Admin_UI\Order_Traceability_Admin::instance();
 	}
 
 	/**

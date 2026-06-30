@@ -1,35 +1,96 @@
-# WordPress
-/wp-admin/
-/wp-includes/
-/wp-content/uploads/
-wp-config.php
-.htaccess
-
+##############################################
 # IDE
+##############################################
+
 .vscode/
+!.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
 .idea/
+
 *.swp
 *.swo
 *~
-.DS_Store
 
-# Dependencies
+##############################################
+# Composer
+##############################################
+
+/vendor/
+
+# NO ignorar composer.lock
+# composer.lock debe subirse
+
+##############################################
+# Node
+##############################################
+
 node_modules/
-vendor/
-composer.lock
 
+# package-lock.json solo ignorarlo si NO usas npm
+# Si utilizas npm para assets, súbelo.
+# package-lock.json
+
+# yarn.lock solo si no usas Yarn
+# yarn.lock
+
+##############################################
+# PHPUnit
+##############################################
+
+.phpunit.result.cache
+
+coverage/
+
+##############################################
 # Logs
+##############################################
+
 *.log
 debug.log
 
-# Package managers
-package-lock.json
-yarn.lock
+##############################################
+# Build
+##############################################
 
-# OS
+/build/
+/dist/
+
+##############################################
+# Sistema Operativo
+##############################################
+
 Thumbs.db
 .DS_Store
 
-# Build artifacts
-/build/
-/dist/
+##############################################
+# Archivos temporales
+##############################################
+
+*.tmp
+*.bak
+
+##############################################
+# Codex
+##############################################
+
+.codex/
+
+##############################################
+# PHPStan cache
+##############################################
+
+.phpstan/
+
+##############################################
+# Psalm (si algún día lo usas)
+##############################################
+
+.psalm/
+
+##############################################
+# Infection (Mutation Testing)
+##############################################
+
+.infection/
