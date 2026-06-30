@@ -52,6 +52,16 @@ Incluye:
 * Activación, orden y fechas de disponibilidad.
 * Catálogo limitado aproximadamente a 10-12 productos.
 
+Estado: completado para UC-006.
+
+* Configuración desde la edición de producto WooCommerce: completado.
+* Persistencia en `lcter_wcpl_rewards`: completado.
+* Coste manual con ayuda visual de la regla precio con IVA × 2.000: completado.
+* Activación, orden y fechas opcionales de disponibilidad: completado.
+* Consulta por producto y consulta de rewards activos: completado.
+* Catálogo visible limitado a 12 rewards ordenados por `sort_order`: completado.
+* Pruebas automatizadas de administración e integración: pendiente de Fase 7.
+
 ## Fase 4 - Canje En Checkout / Pedido
 
 Objetivo: permitir que el cliente canjee puntos por regalos.

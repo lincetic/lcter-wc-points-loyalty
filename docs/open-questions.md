@@ -15,6 +15,7 @@ Este documento recoge aspectos no definidos en `AGENTS.md`, `docs/business-rules
 9. ¿El catálogo trimestral de regalos se cambia manualmente o debe existir automatización por fechas?
 10. ¿Debe mostrarse al cliente el coste en puntos calculado desde el precio del producto o debe guardarse manualmente?
 11. ¿Deben acumular puntos los pedidos de invitado y, en ese caso, cómo se vinculan posteriormente a un `customer_id` sin duplicar saldo?
+12. ¿Las variaciones deben poder configurarse como rewards independientes o solo el producto principal?
 
 ## Checkout Y Experiencia De Cliente
 

@@ -92,6 +92,7 @@ class Admin {
 	 */
 	private function register_hooks(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+		add_filter( 'woocommerce_product_data_tabs', array( $this, 'product_tab' ) );
 		add_action( 'woocommerce_product_data_panels', array( $this, 'product_panel' ) );
 		add_action( 'woocommerce_process_product_meta', array( $this, 'save_reward_product' ) );
 	}
@@ -237,6 +238,23 @@ class Admin {
 	}
 
 	/**
+	 * Add the loyalty tab to WooCommerce product data.
+	 *
+	 * @param array $tabs Product data tabs.
+	 * @return array
+	 */
+	public function product_tab( array $tabs ): array {
+		$tabs['lcter_wcpl_reward'] = array(
+			'label'    => __( 'Puntos de Lealtad', LCTER_WCPL_TEXT_DOMAIN ),
+			'target'   => 'lcter_wcpl_product_panel',
+			'class'    => array(),
+			'priority' => 80,
+		);
+
+		return $tabs;
+	}
+
+	/**
 	 * Add reward panel in product edit page.
 	 */
 	public function product_panel(): void {
@@ -249,17 +267,37 @@ class Admin {
 		<div id="lcter_wcpl_product_panel" class="panel woocommerce_options_panel">
 			<div class="options_group">
 				<?php
+				woocommerce_wp_checkbox(
+					array(
+						'id'          => 'lcter_wcpl_is_reward',
+						'label'       => __( 'Regalo canjeable', LCTER_WCPL_TEXT_DOMAIN ),
+						'description' => __( 'Activa la configuración de este producto como reward.', LCTER_WCPL_TEXT_DOMAIN ),
+						'value'       => $reward ? 'yes' : 'no',
+					)
+				);
+
 				woocommerce_wp_text_input(
 					array(
 						'id'                => 'lcter_wcpl_reward_points_cost',
 						'label'             => __( 'Coste del Regalo en Puntos', LCTER_WCPL_TEXT_DOMAIN ),
-						'description'       => __( 'Dejar en blanco o 0 para que este producto no sea un regalo.', LCTER_WCPL_TEXT_DOMAIN ),
+						'description'       => __( 'Introduce el coste manualmente. Referencia documentada: precio con IVA incluido × 2.000.', LCTER_WCPL_TEXT_DOMAIN ),
 						'type'              => 'number',
 						'value'             => $reward ? (int) $reward['points_cost'] : '',
+						'wrapper_class'     => 'lcter-wcpl-reward-field',
 						'custom_attributes' => array(
 							'step' => '1',
-							'min'  => '0',
+							'min'  => '1',
 						),
+					)
+				);
+
+				woocommerce_wp_checkbox(
+					array(
+						'id'            => 'lcter_wcpl_reward_active',
+						'label'         => __( 'Regalo activo', LCTER_WCPL_TEXT_DOMAIN ),
+						'description'   => __( 'Permite mostrar el reward cuando también cumple sus fechas de disponibilidad.', LCTER_WCPL_TEXT_DOMAIN ),
+						'value'         => ! $reward || ! empty( $reward['active'] ) ? 'yes' : 'no',
+						'wrapper_class' => 'lcter-wcpl-reward-field',
 					)
 				);
 
@@ -269,6 +307,7 @@ class Admin {
 						'label'             => __( 'Orden del Regalo', LCTER_WCPL_TEXT_DOMAIN ),
 						'type'              => 'number',
 						'value'             => $reward ? (int) $reward['sort_order'] : 0,
+						'wrapper_class'     => 'lcter-wcpl-reward-field',
 						'custom_attributes' => array(
 							'step' => '1',
 						),
@@ -277,15 +316,28 @@ class Admin {
 
 				woocommerce_wp_text_input(
 					array(
-						'id'                => 'lcter_wcpl_reward_active',
-						'label'             => __( 'Regalo Activo', LCTER_WCPL_TEXT_DOMAIN ),
-						'description'       => __( '1 = activo, 0 = inactivo.', LCTER_WCPL_TEXT_DOMAIN ),
-						'type'              => 'number',
-						'value'             => $reward ? (int) $reward['active'] : 1,
+						'id'                => 'lcter_wcpl_reward_starts_at',
+						'label'             => __( 'Disponible desde', LCTER_WCPL_TEXT_DOMAIN ),
+						'description'       => __( 'Opcional. Fecha y hora local de inicio de disponibilidad.', LCTER_WCPL_TEXT_DOMAIN ),
+						'type'              => 'datetime-local',
+						'value'             => $this->format_reward_datetime_for_input( $reward['starts_at'] ?? null ),
+						'wrapper_class'     => 'lcter-wcpl-reward-field',
 						'custom_attributes' => array(
-							'step' => '1',
-							'min'  => '0',
-							'max'  => '1',
+							'step' => '60',
+						),
+					)
+				);
+
+				woocommerce_wp_text_input(
+					array(
+						'id'                => 'lcter_wcpl_reward_ends_at',
+						'label'             => __( 'Disponible hasta', LCTER_WCPL_TEXT_DOMAIN ),
+						'description'       => __( 'Opcional. Fecha y hora local de fin de disponibilidad.', LCTER_WCPL_TEXT_DOMAIN ),
+						'type'              => 'datetime-local',
+						'value'             => $this->format_reward_datetime_for_input( $reward['ends_at'] ?? null ),
+						'wrapper_class'     => 'lcter-wcpl-reward-field',
+						'custom_attributes' => array(
+							'step' => '60',
 						),
 					)
 				);
@@ -309,15 +361,25 @@ class Admin {
 			return;
 		}
 
-		$product_id  = (int) $product_id;
-		$points_cost = isset( $_POST['lcter_wcpl_reward_points_cost'] ) ? absint( wp_unslash( $_POST['lcter_wcpl_reward_points_cost'] ) ) : 0;
-		$service     = new Rewards_Service();
-		$reward      = $service->get_reward_by_product( $product_id );
+		$product_id = absint( $product_id );
+		$service    = new Rewards_Service();
+		$reward     = $service->get_reward_by_product( $product_id );
+		$is_reward  = isset( $_POST['lcter_wcpl_is_reward'] ) && 'yes' === sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_is_reward'] ) );
 
-		if ( $points_cost <= 0 ) {
+		if ( ! $is_reward ) {
 			if ( $reward ) {
 				$service->delete_reward( (int) $reward['id'] );
 			}
+			return;
+		}
+
+		$points_cost = isset( $_POST['lcter_wcpl_reward_points_cost'] ) ? absint( sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_reward_points_cost'] ) ) ) : 0;
+		$active      = isset( $_POST['lcter_wcpl_reward_active'] ) && 'yes' === sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_reward_active'] ) ) ? 1 : 0;
+		$sort_order  = isset( $_POST['lcter_wcpl_reward_sort_order'] ) ? (int) sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_reward_sort_order'] ) ) : 0;
+		$starts_at   = $this->get_reward_datetime_from_request( 'lcter_wcpl_reward_starts_at' );
+		$ends_at     = $this->get_reward_datetime_from_request( 'lcter_wcpl_reward_ends_at' );
+
+		if ( $points_cost <= 0 || false === $starts_at || false === $ends_at || ( $starts_at && $ends_at && $starts_at > $ends_at ) ) {
 			return;
 		}
 
@@ -326,10 +388,48 @@ class Admin {
 				'id'          => $reward ? (int) $reward['id'] : 0,
 				'product_id'  => $product_id,
 				'points_cost' => $points_cost,
-				'active'      => isset( $_POST['lcter_wcpl_reward_active'] ) ? absint( wp_unslash( $_POST['lcter_wcpl_reward_active'] ) ) : 1,
-				'sort_order'  => isset( $_POST['lcter_wcpl_reward_sort_order'] ) ? (int) wp_unslash( $_POST['lcter_wcpl_reward_sort_order'] ) : 0,
+				'active'      => $active,
+				'sort_order'  => $sort_order,
+				'starts_at'   => $starts_at,
+				'ends_at'     => $ends_at,
 			)
 		);
+	}
+
+	/**
+	 * Format a stored MySQL datetime for a datetime-local field.
+	 */
+	private function format_reward_datetime_for_input( ?string $datetime ): string {
+		if ( ! $datetime ) {
+			return '';
+		}
+
+		$date = \DateTimeImmutable::createFromFormat( '!Y-m-d H:i:s', $datetime );
+
+		return $date && $date->format( 'Y-m-d H:i:s' ) === $datetime ? $date->format( 'Y-m-d\TH:i' ) : '';
+	}
+
+	/**
+	 * Read and validate one explicit datetime-local request field.
+	 *
+	 * @return string|false|null Canonical MySQL datetime, false if invalid, null if empty.
+	 */
+	private function get_reward_datetime_from_request( string $field ) {
+		if ( ! isset( $_POST[ $field ] ) ) {
+			return null;
+		}
+
+		$value = sanitize_text_field( wp_unslash( $_POST[ $field ] ) );
+		if ( '' === $value ) {
+			return null;
+		}
+
+		$date = \DateTimeImmutable::createFromFormat( '!Y-m-d\TH:i', $value );
+		if ( ! $date || $date->format( 'Y-m-d\TH:i' ) !== $value ) {
+			return false;
+		}
+
+		return $date->format( 'Y-m-d H:i:s' );
 	}
 
 }

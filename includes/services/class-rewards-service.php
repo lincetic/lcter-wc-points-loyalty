@@ -19,6 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Rewards_Service {
 	const MINIMUM_ORDER_TOTAL_FOR_REDEMPTION = 60.0;
+	const MAX_VISIBLE_REWARDS                = 12;
 
 	private Rewards_Repository $rewards;
 	private Customer_Points_Repository $points;
@@ -35,7 +36,7 @@ class Rewards_Service {
 	}
 
 	public function get_available_rewards(): array {
-		return $this->rewards->find_active();
+		return $this->rewards->find_active( self::MAX_VISIBLE_REWARDS );
 	}
 
 	public function get_reward( int $reward_id ): ?array {
@@ -52,6 +53,10 @@ class Rewards_Service {
 
 	public function delete_reward( int $reward_id ): bool {
 		return $this->rewards->delete( $reward_id );
+	}
+
+	public function deactivate_reward( int $reward_id ): bool {
+		return $this->rewards->deactivate( $reward_id );
 	}
 
 	public function get_customer_available_rewards( int $customer_id ): array {

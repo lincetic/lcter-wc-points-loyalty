@@ -16,6 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Rewards {
 	const MINIMUM_ORDER_TOTAL_FOR_REDEMPTION = Rewards_Service::MINIMUM_ORDER_TOTAL_FOR_REDEMPTION;
+	const MAX_VISIBLE_REWARDS                = Rewards_Service::MAX_VISIBLE_REWARDS;
 
 	public static function create_reward( $args ): int {
 		return ( new Rewards_Service() )->save_reward( (array) $args );
@@ -29,12 +30,20 @@ class Rewards {
 		return ( new Rewards_Service() )->get_reward( $reward_id );
 	}
 
+	public static function get_reward_by_product( int $product_id ): ?array {
+		return ( new Rewards_Service() )->get_reward_by_product( $product_id );
+	}
+
 	public static function save_reward( array $reward ): int {
 		return ( new Rewards_Service() )->save_reward( $reward );
 	}
 
 	public static function delete_reward( int $reward_id ): bool {
 		return ( new Rewards_Service() )->delete_reward( $reward_id );
+	}
+
+	public static function deactivate_reward( int $reward_id ): bool {
+		return ( new Rewards_Service() )->deactivate_reward( $reward_id );
 	}
 
 	public static function get_customer_available_rewards( $customer_id ): array {

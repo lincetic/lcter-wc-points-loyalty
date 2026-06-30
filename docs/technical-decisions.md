@@ -170,3 +170,31 @@ Motivo:
 * `lcter_wcpl_customer_points` identifica el saldo mediante `customer_id`.
 * No está definido cómo asociar de forma estable un pedido de invitado a un saldo de fidelización.
 * La política futura queda registrada en `docs/open-questions.md`.
+
+## TD-016 - Configuración Manual De Rewards En Producto
+
+Decisión: la presencia de una fila en `lcter_wcpl_rewards` identifica un producto como reward. La edición del producto permite guardar manualmente coste en puntos, estado, orden y fechas.
+
+Desmarcar “Regalo canjeable” elimina la fila. Desmarcar “Regalo activo” conserva la fila con `active=0`.
+
+Motivo:
+
+* Mantener `lcter_wcpl_rewards` como fuente de verdad del catálogo.
+* Diferenciar eliminar una configuración de retirarla temporalmente del catálogo.
+* No introducir todavía recálculo automático del coste. La interfaz solo muestra como ayuda la regla precio con IVA incluido × 2.000.
+
+## TD-017 - Disponibilidad Y Límite Del Catálogo
+
+Decisión: `Rewards_Service::MAX_VISIBLE_REWARDS` limita la consulta activa a 12 elementos.
+
+Los rewards activos se ordenan por `sort_order` e `id` y se filtran usando la fecha y hora local de WordPress:
+
+* `active = 1`.
+* `starts_at` vacío o menor/igual al momento actual.
+* `ends_at` vacío o mayor/igual al momento actual.
+
+Motivo:
+
+* Aplicar el límite documentado de aproximadamente 10-12 productos.
+* Permitir preparar campañas futuras o conservar campañas finalizadas sin borrarlas.
+* Mantener las fechas coherentes con la zona horaria configurada en WordPress.

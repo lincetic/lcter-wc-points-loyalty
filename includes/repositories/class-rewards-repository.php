@@ -16,15 +16,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class Rewards_Repository {
-	public function find_active(): array {
+	public function find_active( int $limit ): array {
 		global $wpdb;
 
+		$limit        = max( 1, min( 100, $limit ) );
+		$current_time = current_time( 'mysql' );
+
 		return $wpdb->get_results(
-			'SELECT * FROM ' . $this->table_name() . "
-			WHERE active = 1
-			AND (starts_at IS NULL OR starts_at <= NOW())
-			AND (ends_at IS NULL OR ends_at >= NOW())
-			ORDER BY sort_order ASC, id ASC",
+			$wpdb->prepare(
+				'SELECT * FROM ' . $this->table_name() . '
+				WHERE active = 1
+				AND (starts_at IS NULL OR starts_at <= %s)
+				AND (ends_at IS NULL OR ends_at >= %s)
+				ORDER BY sort_order ASC, id ASC
+				LIMIT %d',
+				$current_time,
+				$current_time,
+				$limit
+			),
 			ARRAY_A
 		);
 	}
@@ -62,13 +71,24 @@ class Rewards_Repository {
 			return 0;
 		}
 
+		$starts_at = $this->normalize_datetime( $reward['starts_at'] ?? null );
+		$ends_at   = $this->normalize_datetime( $reward['ends_at'] ?? null );
+
+		if (
+			( ! empty( $reward['starts_at'] ) && null === $starts_at ) ||
+			( ! empty( $reward['ends_at'] ) && null === $ends_at ) ||
+			( $starts_at && $ends_at && $starts_at > $ends_at )
+		) {
+			return 0;
+		}
+
 		$data = array(
 			'product_id'  => $product_id,
 			'points_cost' => $points_cost,
 			'active'      => empty( $reward['active'] ) ? 0 : 1,
 			'sort_order'  => isset( $reward['sort_order'] ) ? (int) $reward['sort_order'] : 0,
-			'starts_at'   => $this->normalize_datetime( $reward['starts_at'] ?? null ),
-			'ends_at'     => $this->normalize_datetime( $reward['ends_at'] ?? null ),
+			'starts_at'   => $starts_at,
+			'ends_at'     => $ends_at,
 		);
 		$formats = array( '%d', '%d', '%d', '%d', '%s', '%s' );
 
@@ -98,12 +118,39 @@ class Rewards_Repository {
 		return (bool) $wpdb->delete( $this->table_name(), array( 'id' => $reward_id ), array( '%d' ) );
 	}
 
+	public function deactivate( int $reward_id ): bool {
+		global $wpdb;
+
+		if ( $reward_id <= 0 ) {
+			return false;
+		}
+
+		$updated = $wpdb->update(
+			$this->table_name(),
+			array( 'active' => 0 ),
+			array( 'id' => $reward_id ),
+			array( '%d' ),
+			array( '%d' )
+		);
+
+		return false !== $updated;
+	}
+
 	private function normalize_datetime( $datetime ): ?string {
 		if ( empty( $datetime ) || ! is_string( $datetime ) ) {
 			return null;
 		}
 
-		return sanitize_text_field( $datetime );
+		$datetime = sanitize_text_field( $datetime );
+
+		foreach ( array( 'Y-m-d H:i:s', 'Y-m-d\TH:i' ) as $format ) {
+			$date = \DateTimeImmutable::createFromFormat( '!' . $format, $datetime );
+			if ( $date && $date->format( $format ) === $datetime ) {
+				return $date->format( 'Y-m-d H:i:s' );
+			}
+		}
+
+		return null;
 	}
 
 	private function table_name(): string {

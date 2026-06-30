@@ -88,6 +88,38 @@ Casos:
 
 Fuentes: AGENTS.md, database.md.
 
+## Pruebas Del Catálogo De Rewards
+
+Casos de servicio y repositorio:
+
+* Crear un reward guarda `product_id`, `points_cost`, `active`, `sort_order`, `starts_at` y `ends_at`.
+* Guardar de nuevo el mismo `product_id` actualiza la fila existente.
+* Consultar por producto devuelve su reward.
+* Desactivar conserva la fila con `active=0`; eliminar borra la configuración.
+* Una fecha inválida o una fecha de fin anterior al inicio no se guarda.
+* La consulta activa excluye rewards inactivos, aún no iniciados y finalizados.
+* Los límites de fecha son inclusivos.
+* Los resultados se ordenan por `sort_order` y después por `id`.
+* La consulta activa devuelve como máximo 12 elementos.
+* No se crean ni consultan `product_points` o `points_per_currency`.
+
+Reglas: BR-012, BR-013. Caso de uso: UC-006.
+
+## Pruebas Manuales De Fase 3
+
+Mientras no exista infraestructura PHPUnit:
+
+1. Editar un producto WooCommerce y abrir la pestaña “Puntos de Lealtad”.
+2. Marcar “Regalo canjeable” y comprobar que aparecen coste, activo, orden y fechas.
+3. Confirmar que la ayuda del coste muestra “precio con IVA incluido × 2.000” sin modificar automáticamente el valor.
+4. Guardar un coste positivo, orden, inicio y fin; comprobar una única fila en `lcter_wcpl_rewards` con todos los valores.
+5. Editar los valores y confirmar que se actualiza la misma fila para el `product_id`.
+6. Desmarcar “Regalo activo” y confirmar que la fila permanece con `active=0` y no aparece en la consulta activa.
+7. Configurar fechas futuras y pasadas para verificar que solo aparece dentro de su ventana inclusiva.
+8. Configurar más de 12 rewards activos y confirmar que la consulta devuelve los 12 primeros por `sort_order` e `id`.
+9. Desmarcar “Regalo canjeable” y confirmar que se elimina la fila del producto.
+10. Repetir un guardado con nonce inválido o sin capacidad de edición y confirmar que no cambia la tabla.
+
 ## Pruebas De Clientify
 
 Casos:
