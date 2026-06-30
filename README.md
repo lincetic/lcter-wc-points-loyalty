@@ -1,134 +1,111 @@
 # LCTER WC Points Loyalty
 
-Professional WooCommerce loyalty plugin based on points and reward redemption.
-
----
+WooCommerce loyalty points and configurable reward redemption.
 
 ## Overview
 
-LCTER WC Points Loyalty allows WooCommerce stores to reward customers with loyalty points earned after successful purchases.
+LCTER WC Points Loyalty awards points to registered customers after successful WooCommerce payments. Customers can redeem their existing balance for products configured as rewards during the classic checkout.
 
-Customers can later redeem their points for configurable rewards directly during checkout.
+The plugin uses dedicated tables, atomic balance operations and database-backed idempotency. Version `0.1.0` is under active development.
 
-The plugin has been designed following SOLID principles, WordPress Coding Standards and a clean separation between business logic and infrastructure.
+## Requirements
 
----
+* WordPress 6.5+
+* PHP 8.1+
+* WooCommerce 8.0+
+* MySQL/MariaDB with transactional table support
 
-## Main Features
+## Implemented Features
 
-* Loyalty points based on completed purchases.
-* Reward catalog.
-* Multiple reward redemption.
-* Transaction history.
-* Manual point adjustments.
-* Initial bonus campaigns.
-* Dedicated database layer.
-* Clientify integration support.
-* Secure uninstall.
-* WooCommerce native integration.
+* Points awarded only after an order is paid.
+* One cent equals one point.
+* VAT included and shipping plus shipping tax excluded from earnings.
+* Configurable reward catalog with manual point costs and availability dates.
+* Multiple rewards and multiple quantities in classic checkout.
+* Zero-priced order items clearly marked as pending or redeemed rewards.
+* Atomic balances with complete transaction history.
+* Idempotent earning, redemption, initial bonus and cancellation operations.
+* Reward traceability by order and customer.
+* Manual 10,000-point initial bonus for WordPress users with the `customer` role.
+* Earned-point reversal for cancelled and fully refunded orders.
+* Administrative diagnostics and safe retry for recoverable order errors.
+* Optional safe data removal during uninstall.
 
----
+## Current Limitations
+
+* Classic checkout only; Checkout Blocks and Store API are not supported.
+* Guest orders do not earn or redeem points.
+* Partial refunds are not implemented.
+* Point expiration and manual balance adjustments are not implemented.
+* Clientify payload preparation exists, but no external synchronization, REST API or webhooks are implemented.
+* No automated retries, bulk recovery, emails or WP-CLI commands.
 
 ## Architecture
 
-The plugin follows a layered architecture.
-
-```
-Admin
-        │
-WooCommerce
-        │
-Business Services
-        │
-Repositories
-        │
-Database
+```text
+Admin / Frontend / WooCommerce Adapters
+                  |
+             Services
+                  |
+            Repositories
+                  |
+          Plugin Database Tables
 ```
 
-Business rules are completely separated from persistence.
+* `includes/repositories/` contains business SQL.
+* `includes/services/` contains application and domain operations.
+* `includes/adapters/` integrates WooCommerce hooks and objects.
+* `includes/admin/` contains administrative UI and protected actions.
 
----
+Compatibility facades remain available, but the deprecated immediate-redemption API safely returns `false` and has no side effects.
 
 ## Database
 
-The plugin uses dedicated custom tables.
+The plugin creates four tables using the WordPress database prefix:
 
-* customer_points
-* transactions
-* rewards
-* order_rewards
+* `lcter_wcpl_customer_points`
+* `lcter_wcpl_transactions`
+* `lcter_wcpl_rewards`
+* `lcter_wcpl_order_rewards`
 
-No customer balance is stored in WordPress post meta.
+Customer balances are not stored in post meta. Order and order-item metadata are used only for WooCommerce visibility and operational traceability.
 
----
+## Installation
 
-## Project Documentation
+1. Upload the plugin directory to `/wp-content/plugins/`.
+2. Ensure WooCommerce is active.
+3. Activate LCTER WC Points Loyalty.
+4. Configure reward products from the WooCommerce product editor.
+5. Review the `Points Loyalty` administration menu.
 
-Detailed documentation can be found in the `docs` directory.
-
-* vision.md
-* architecture.md
-* business-rules.md
-* use-cases.md
-* database.md
-* domain-model.md
-* roadmap.md
-* testing.md
-* integrations.md
-* technical-decisions.md
-* open-questions.md
-
----
-
-## Coding Standards
-
-* PHP 8.1+
-* WordPress Coding Standards
-* PSR-12 where compatible
-* SOLID principles
-* Secure coding practices
-* Database queries using `$wpdb->prepare()`
-
----
+The initial bonus is never executed automatically; it requires explicit confirmation by a user with `manage_woocommerce`.
 
 ## Development
 
-Recommended environment:
+Install development dependencies:
 
-* Docker
-* WP-CLI
-* PHPStan
-* PHPUnit
+```bash
+composer install
+```
 
----
+Run quality checks:
+
+```bash
+composer test
+composer phpstan
+composer phpcs
+composer qa
+```
+
+Configuration is included for PHPUnit 10, PHPStan level 5 and WordPress Coding Standards. WooCommerce integration, concurrency and HPOS test coverage remain pending.
 
 ## Security
 
-The plugin always uses:
+Administrative actions use capability checks and nonces. Inputs are validated and sanitized, output is escaped, and dynamic SQL values are prepared. Balance-changing operations use row locking and never permit a negative balance.
 
-* Nonces
-* Capability checks
-* Sanitization
-* Escaping
-* Prepared SQL statements
+## Documentation
 
----
-
-## Roadmap
-
-Current development status:
-
-* ✔ Plugin architecture
-* ✔ Database design
-* ✔ Documentation
-* ⬜ Point accumulation
-* ⬜ Reward redemption
-* ⬜ Checkout integration
-* ⬜ Administration panel
-* ⬜ Clientify integration
-* ⬜ Automated tests
-
----
+Detailed architecture, business rules, use cases, database design, testing guidance, technical decisions and open questions are available in [`docs/`](docs/).
 
 ## License
 

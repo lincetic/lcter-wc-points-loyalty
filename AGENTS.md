@@ -1,166 +1,143 @@
 # LCTER WC Points Loyalty
 
-## Objetivo del proyecto
+## Objetivo
 
-Desarrollar un plugin profesional para WordPress y WooCommerce que permita crear un sistema de fidelización basado en puntos.
+Desarrollar y mantener un plugin profesional de fidelización para WordPress y WooCommerce. Los clientes registrados acumulan puntos tras pagar sus pedidos y pueden canjearlos por productos configurados como regalos.
 
-Los clientes acumulan puntos en función de sus compras y posteriormente pueden canjearlos por premios o regalos.
+El plugin debe mantenerse seguro, trazable, idempotente y separado por capas.
 
-El plugin debe ser mantenible, seguro, escalable y compatible con WooCommerce.
+## Fuentes De Verdad
 
----
+Antes de implementar o modificar reglas revisar:
 
-## Reglas generales para Codex
+* `docs/architecture.md`
+* `docs/business-rules.md`
+* `docs/use-cases.md`
+* `docs/database.md`
+* `docs/domain-model.md`
+* `docs/technical-decisions.md`
+* `docs/testing.md`
+* `docs/roadmap.md`
+* `docs/open-questions.md`
 
-Antes de implementar cualquier funcionalidad, revisar siempre:
+No inventar reglas de negocio. Si una decisión no está definida, registrarla en `docs/open-questions.md` antes de ampliar comportamiento.
 
-* docs/business-rules.md
-* docs/use-cases.md
-* docs/database.md
-* docs/domain-model.md
-* docs/roadmap.md
+## Metadatos Y Compatibilidad
 
-No inventar reglas de negocio no documentadas.
+* Plugin: LCTER WC Points Loyalty
+* Plugin URI: https://lincetic.es/
+* Autor: Eddie Rapallo
+* Versión actual: `0.1.0`
+* WordPress: 6.5+
+* PHP: 8.1+
+* WooCommerce: 8.0+
+* Namespace: `LCTER_WCPL`
+* Text domain: `lcter-wc-points-loyalty`
+* Prefijo lógico de tablas: `lcter_wcpl_`
+* Licencia: GPL-2.0-or-later
 
-Si hay una duda funcional, añadirla a:
+La cabecera del plugin, `readme.txt`, `README.md` y las constantes públicas deben mantenerse coherentes.
 
-* docs/open-questions.md
+## Arquitectura Implementada
 
----
+* `includes/repositories/`: todo el SQL de negocio y las operaciones sobre tablas.
+* `includes/services/`: casos de aplicación, reglas de saldo, rewards, bonus, cancelaciones y trazabilidad.
+* `includes/adapters/`: traducción entre servicios y APIs/hooks de WooCommerce.
+* `includes/admin/`: edición de rewards, trazabilidad, bonus y recuperación operativa.
+* `includes/class-database.php`: esquema, versión y migraciones no destructivas.
+* Fachadas `Points`, `Points_Service`, `Rewards` y `WooCommerce`: compatibilidad pública.
 
-## Tecnología
+Dependencias permitidas:
 
-* WordPress
-* WooCommerce 8.0+
-* PHP 8.1+
-* MySQL
-* WP Coding Standards
-* PSR-12 donde sea compatible con WordPress
-* PHPStan
-* PHPUnit
-* Docker
-* WP-CLI
+1. Administración, frontend y adaptadores llaman a servicios.
+2. Los servicios coordinan repositorios.
+3. Los repositorios encapsulan SQL.
+4. Los servicios de saldo no deben depender de objetos WooCommerce.
 
----
+No añadir SQL en administración, servicios, adaptadores o plantillas.
 
-## Metadatos del plugin
+## Reglas Críticas
 
-Plugin:
+* Los puntos se generan únicamente cuando `WC_Order::is_paid()` es verdadero.
+* Cálculo: total con IVA menos portes e impuesto de portes; 1 céntimo = 1 punto.
+* Los pedidos invitados no acumulan ni canjean en la fase actual.
+* El checkout soportado es el checkout clásico.
+* El pedido actual no financia su propio canje.
+* Nunca permitir saldo negativo.
+* Los regalos se añaden a coste cero y se identifican como REGALO.
+* `lcter_wcpl_order_rewards` es la fuente principal de regalos canjeados.
+* Los metadatos de pedido/item son trazabilidad auxiliar, no fuente principal del saldo.
+* El bonus inicial es manual, de 10.000 puntos y solo para usuarios con rol `customer`.
+* Cancelaciones y reembolsos totales revierten puntos `earned`; los reembolsos parciales siguen pendientes.
 
-LCTER WC Points Loyalty
+## Idempotencia Obligatoria
 
-Plugin URI:
+* Acumulación: `earned_order:{order_id}`.
+* Canje: `redeemed_order:{order_id}`.
+* Reward de pedido: `redeemed_order:{order_id}:reward:{reward_id}`.
+* Bonus inicial: `initial_bonus:{customer_id}:10000`.
+* Cancelación/reembolso total: `cancelled_order:{order_id}`.
 
-https://lincetic.es/
-
-Autor:
-
-Eddie Rapallo
-
-Licencia:
-
-GPL-2.0-or-later
-
-Requisitos documentados:
-
-* WordPress 6.5+
-* PHP 8.1+
-* WooCommerce 8.0+
-
-Nota:
-
-Si la cabecera del plugin, `readme.txt` y `README.md` no coinciden en version o requisitos, no asumir el valor correcto. Añadir la discrepancia a `docs/open-questions.md`.
-
----
-
-## Convenciones
-
-Namespace actual:
-
-LCTER_WCPL
-
-Prefijo de tablas:
-
-lcter_wcpl_
-
-Textdomain:
-
-lcter-wc-points-loyalty
-
----
-
-## Arquitectura
-
-Separar responsabilidades:
-
-* Base de datos
-* Dominio
-* WooCommerce
-* Administración
-* Cliente/frontend
-* Checkout
-* Integraciones externas
-
-No mezclar lógica de negocio con HTML.
-
-No meter toda la lógica en una única clase.
-
-Evitar clases enormes.
-
-Seguir principios SOLID cuando no entren en conflicto con patrones WordPress.
-
----
+La restricción única de base de datos es la garantía final. Los metadatos nunca deben sustituirla.
 
 ## Seguridad
 
-Siempre usar:
+* Combinar nonces y comprobaciones de capacidad en toda acción administrativa.
+* Usar `manage_woocommerce` para bonus y reintentos operativos.
+* Leer claves concretas de `$_POST`, `$_GET` o `$_REQUEST` usando `wp_unslash()` y validación de tipo.
+* Sanitizar entradas y escapar toda salida en el contexto correcto.
+* Usar `$wpdb->prepare()` para valores dinámicos.
+* No confiar en costes, IDs o cantidades enviados por el frontend.
 
-* nonces
-* current_user_can()
-* sanitize_text_field()
-* absint()
-* wp_unslash()
-* esc_html()
-* esc_attr()
-* $wpdb->prepare()
+## Funcionalidades Implementadas
 
-No acceder directamente a $_POST, $_GET o $_REQUEST sin sanitizar.
+* Fases 1-6 del roadmap.
+* Acumulación y consulta de saldo.
+* Catálogo manual de rewards.
+* Canje múltiple en checkout clásico.
+* Trazabilidad por pedido y cliente.
+* Bonus inicial administrativo.
+* Reversión de puntos por cancelación o reembolso total.
+* Diagnóstico y reintento manual de `processing_error` desde el pedido.
+* Configuración inicial de PHPUnit, PHPStan y PHPCS/WPCS.
 
----
+## Fuera De Alcance Actual
 
-## Base de datos
+* Reembolsos parciales.
+* Caducidad efectiva de puntos.
+* Ajustes manuales de saldo.
+* Checkout Blocks / Store API.
+* REST, webhooks y sincronización real con Clientify.
+* Emails de bonus o movimientos.
+* WP-CLI, reintentos automáticos y operaciones por lotes.
 
-El plugin usará tablas propias.
+## Validación
 
-Tablas principales:
+Ejecutar, según disponibilidad del entorno:
 
-* lcter_wcpl_customer_points
-* lcter_wcpl_transactions
-* lcter_wcpl_rewards
-* lcter_wcpl_order_rewards
+```bash
+composer validate --no-check-publish
+composer test
+composer phpstan
+composer phpcs
+```
 
-No usar postmeta como fuente principal del saldo de puntos.
+Además:
 
----
+* `php -l` en todos los PHP modificados.
+* `node --check` en todo JS modificado.
+* `git diff --check`.
+* Confirmar que no aparece SQL fuera de repositorios, esquema o desinstalación.
+
+Si `vendor/` no está instalado, documentar qué herramientas no pudieron ejecutarse.
 
 ## Documentación
 
-Cada vez que se implemente una funcionalidad, actualizar:
+Actualizar con cada cambio:
 
-* docs/roadmap.md
-* docs/business-rules.md
-* docs/use-cases.md
-* docs/database.md si cambia la BD
-* docs/technical-decisions.md si se toma una decisión importante
-
----
-
-## Reglas importantes
-
-* Los puntos se generan después del pago.
-* Nunca se suman antes de que el pedido esté pagado.
-* El pedido actual no cuenta para calcular el saldo disponible en el canje.
-* Nunca permitir saldo negativo.
-* Los regalos se añaden al pedido con coste 0.
-* Los regalos deben identificarse como REGALO.
-* Clientify debe poder consultar qué regalos eligió cada cliente.
+* `docs/roadmap.md` para estado y alcance.
+* `docs/testing.md` para casos automatizados y manuales.
+* `docs/technical-decisions.md` para decisiones relevantes.
+* `docs/open-questions.md` para dudas pendientes.
+* `docs/database.md` solo cuando cambie el esquema o su semántica.
+* `docs/business-rules.md` y `docs/use-cases.md` cuando cambien reglas funcionales aprobadas.

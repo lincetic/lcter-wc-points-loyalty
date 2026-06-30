@@ -1,181 +1,143 @@
-# LCTER WC Points Loyalty - Project
+# LCTER WC Points Loyalty - Proyecto
 
 ## Resumen
 
-LCTER WC Points Loyalty es un plugin profesional para WordPress y WooCommerce que implementa un sistema de fidelizacion basado en puntos y canje de regalos.
+LCTER WC Points Loyalty es un plugin para WordPress y WooCommerce que implementa fidelización mediante puntos y regalos. Los clientes registrados acumulan puntos después del pago y pueden canjear su saldo por productos configurados como rewards durante el checkout clásico.
 
-Los clientes acumulan puntos despues de compras pagadas y pueden canjearlos por regalos configurables durante el checkout. El plugin usa tablas propias para el saldo, el historico de movimientos, el catalogo de regalos y los regalos canjeados por pedido.
+El sistema mantiene saldo, transacciones, catálogo y regalos canjeados en tablas propias. Las operaciones sensibles son atómicas e idempotentes.
 
 ## Identidad
 
 * Plugin: LCTER WC Points Loyalty
 * Plugin URI: https://lincetic.es/
 * Autor: Eddie Rapallo
-* Version: 0.1.0
+* Versión: `0.1.0`
+* WordPress: 6.5+
+* PHP: 8.1+
+* WooCommerce: 8.0+
 * Text domain: `lcter-wc-points-loyalty`
 * Namespace: `LCTER_WCPL`
-* Prefijo de tablas: `lcter_wcpl_`
 * Licencia: GPL-2.0-or-later
 
-## Requisitos
+## Estado Funcional
 
-* WordPress 6.5+
-* PHP 8.1+
-* WooCommerce 8.0+
-* MySQL
+Implementado:
 
-## Objetivo Funcional
+* Acumulación tras pago: 1 céntimo = 1 punto, IVA incluido y portes excluidos.
+* Consulta de saldo desde servicios, fachada y frontend de cliente.
+* Catálogo de hasta 12 rewards activos, con coste manual, orden y fechas.
+* Canje de uno o varios regalos y cantidades múltiples en checkout clásico.
+* Regalos a coste cero con estados `reward_selected` y `reward_redeemed`.
+* Transacciones con `balance_before`, `balance_after` e idempotencia.
+* Trazabilidad de `order_rewards` por pedido y cliente.
+* Visualización de regalos canjeados en administración.
+* Bonus inicial manual de 10.000 puntos para usuarios con rol `customer`.
+* Reversión total de puntos `earned` al cancelar o reembolsar completamente un pedido.
+* Sección administrativa de incidencias y reintento seguro de errores recuperables.
 
-El plugin permite:
+No implementado:
 
-* Acumular puntos por compras realizadas en WooCommerce.
-* Sumar puntos solo cuando el pedido esta pagado.
-* Calcular puntos sobre el total del pedido con IVA incluido, excluyendo portes.
-* Canjear puntos por regalos.
-* Anadir regalos al pedido con coste 0.
-* Identificar regalos como REGALO.
-* Registrar todo cambio de puntos.
-* Registrar que regalos eligio cada cliente para administracion, informes e integracion con Clientify.
+* Checkout Blocks y Store API.
+* Reembolsos parciales.
+* Caducidad de puntos.
+* Ajustes manuales de saldo.
+* API REST, webhooks o sincronización real con Clientify.
+* Emails, WP-CLI, reintentos automáticos o acciones por lotes.
 
 ## Reglas Principales
 
-* 1 centimo = 1 punto.
-* 1 euro = 100 puntos.
-* El pedido minimo para canje es de 60 EUR IVA incluido.
-* El pedido actual no suma puntos para el saldo disponible durante su propio canje.
-* El cliente puede elegir uno o varios regalos.
-* El cliente puede elegir varias unidades del mismo regalo si tiene saldo suficiente.
-* Nunca debe permitirse saldo negativo.
-* El cliente debe poder elegir no canjear puntos.
-* El bonus inicial previsto es de 10.000 puntos y debe quedar registrado como transaccion.
-* Todo cambio de puntos debe crear una transaccion.
+* Solo acumulan pedidos pagados de clientes registrados.
+* Los pedidos invitados quedan excluidos en la fase actual.
+* El mínimo para canjear es 60 EUR de subtotal con IVA y sin portes.
+* El pedido actual no aumenta el saldo disponible para su propio canje.
+* Nunca se permite saldo negativo.
+* Un canje no se considera concedido hasta completar pago, descuento y trazabilidad.
+* El coste en puntos siempre se obtiene de base de datos.
+* Las cancelaciones y reembolsos totales no descuentan parcialmente: si falta saldo quedan en `processing_error`.
+
+## Idempotencia
+
+* `earned_order:{order_id}`
+* `redeemed_order:{order_id}`
+* `redeemed_order:{order_id}:reward:{reward_id}`
+* `initial_bonus:{customer_id}:10000`
+* `cancelled_order:{order_id}`
+
+Las claves únicas de `lcter_wcpl_transactions` y `lcter_wcpl_order_rewards` son la garantía principal. Los metadatos WooCommerce son auxiliares.
 
 ## Arquitectura
 
-El proyecto sigue una arquitectura por capas:
+```text
+Administración / Frontend / Adaptadores WooCommerce
+                         |
+                    Servicios
+                         |
+                   Repositorios
+                         |
+                Tablas del plugin
+```
 
-* Bootstrap del plugin
-* Loader
-* Base de datos
-* Dominio / servicios de negocio
-* Integracion WooCommerce
-* Administracion
-* Cliente / frontend / checkout
-* Integraciones externas
+Directorios principales:
 
-La logica de negocio debe mantenerse separada de HTML, persistencia y detalles de presentacion. El desarrollo debe seguir WordPress Coding Standards, PSR-12 donde sea compatible y principios SOLID.
+* `includes/repositories/`: persistencia y transacciones SQL.
+* `includes/services/`: reglas y casos de aplicación.
+* `includes/adapters/`: hooks y objetos WooCommerce.
+* `includes/admin/`: UI y acciones administrativas.
+* `tests/Unit/`: pruebas unitarias de servicios de saldo, bonus y cancelaciones.
 
 ## Base De Datos
 
-El saldo de puntos no se guarda en postmeta. La fuente principal son tablas propias:
+Tablas con prefijo dinámico de WordPress:
 
 * `lcter_wcpl_customer_points`
 * `lcter_wcpl_transactions`
 * `lcter_wcpl_rewards`
 * `lcter_wcpl_order_rewards`
 
-No se debe usar:
+Versión actual del esquema: `1.2.0`, almacenada en `lcter_wcpl_schema_version`. Las migraciones son no destructivas y usan `dbDelta()`.
 
-* `product_points`
-* `points_per_currency`
+No se usan `product_points` ni `points_per_currency`.
 
-## Integraciones
+## Administración
 
-### WooCommerce
+* Dashboard de puntos y bonus inicial.
+* Configuración de rewards en la edición del producto.
+* Trazabilidad de rewards dentro del pedido.
+* Advertencia para regalos pendientes de pago.
+* Diagnóstico de `processing_error` y canjes `rejected`.
+* Reintento con `manage_woocommerce`, nonce y comprobación de estado.
 
-WooCommerce aporta:
+## Clientify
 
-* pedidos
-* productos configurables como regalos
-* order items
-* hooks de pedido pagado
-* metadatos de pedido y order item
+La integración externa no está implementada. El plugin solo prepara:
 
-### Clientify
+* `lcter_wcpl_order_rewards` como fuente principal.
+* Snapshots de producto, SKU, cantidades y puntos.
+* Payloads internos neutrales por pedido y cliente.
+* Metadatos auxiliares de pedido y order item.
 
-Clientify debe poder consultar o recibir los regalos elegidos por cada cliente.
+El mecanismo externo sigue pendiente en `docs/open-questions.md`.
 
-Fuentes previstas:
+## Calidad
 
-* `lcter_wcpl_order_rewards`
-* metadatos del pedido
-* metadatos del order item
+Configuración incluida:
 
-El mecanismo exacto de integracion con Clientify esta pendiente de definicion y debe mantenerse en `docs/open-questions.md`.
+* PHPUnit 10.
+* PHPStan nivel 5 con extensión WordPress.
+* PHPCS con WordPress, WordPress-Extra y WordPress-Docs.
 
-## Seguridad
+Comandos desde la raíz del plugin:
 
-Siempre usar:
+```bash
+composer install
+composer test
+composer phpstan
+composer phpcs
+composer qa
+```
 
-* nonces
-* `current_user_can()`
-* `sanitize_text_field()`
-* `absint()`
-* `wp_unslash()`
-* `esc_html()`
-* `esc_attr()`
-* `$wpdb->prepare()`
+Las pruebas unitarias cubren saldo, idempotencia, bonus inicial y cancelaciones. Siguen pendientes las pruebas de integración reales con WooCommerce, concurrencia y HPOS.
 
-No acceder directamente a `$_POST`, `$_GET` o `$_REQUEST` sin sanitizar.
+## Documentación
 
-## Documentacion Del Proyecto
-
-La documentacion funcional y tecnica vive en `docs/`:
-
-* `docs/vision.md`
-* `docs/architecture.md`
-* `docs/business-rules.md`
-* `docs/use-cases.md`
-* `docs/database.md`
-* `docs/domain-model.md`
-* `docs/roadmap.md`
-* `docs/integrations.md`
-* `docs/testing.md`
-* `docs/technical-decisions.md`
-* `docs/open-questions.md`
-
-Antes de implementar una funcionalidad revisar:
-
-* `docs/business-rules.md`
-* `docs/use-cases.md`
-* `docs/database.md`
-* `docs/domain-model.md`
-* `docs/roadmap.md`
-
-Si una regla no esta documentada, no se debe inventar. La duda debe ir a `docs/open-questions.md`.
-
-## Estado Del Proyecto
-
-Estado actual documentado:
-
-* Arquitectura del plugin: iniciada
-* Diseno de base de datos: definido
-* Documentacion: iniciada
-* Acumulacion de puntos: en desarrollo
-* Canje de regalos: en desarrollo
-* Integracion checkout: pendiente
-* Panel de administracion: pendiente de completar
-* Integracion Clientify: pendiente de definir
-* Pruebas automatizadas: pendiente
-
-## Calidad Y Herramientas
-
-Herramientas y practicas previstas:
-
-* WordPress Coding Standards
-* PSR-12 donde sea compatible
-* PHPStan
-* PHPUnit
-* Docker
-* WP-CLI
-
-## Criterio De Evolucion
-
-Cada cambio funcional debe actualizar la documentacion relacionada:
-
-* `docs/roadmap.md`
-* `docs/business-rules.md`
-* `docs/use-cases.md`
-* `docs/database.md` si cambia la base de datos
-* `docs/technical-decisions.md` si se toma una decision tecnica relevante
-* `docs/open-questions.md` si aparece una duda funcional o tecnica
+Las fuentes funcionales y técnicas están en `docs/`. Antes de implementar revisar especialmente `architecture.md`, `business-rules.md`, `use-cases.md`, `database.md`, `technical-decisions.md`, `testing.md`, `roadmap.md` y `open-questions.md`.
