@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Database {
 	const SCHEMA_VERSION_OPTION = 'lcter_wcpl_schema_version';
-	const SCHEMA_VERSION        = '1.1.0';
+	const SCHEMA_VERSION        = '1.2.0';
 
 	const TABLE_SUFFIX_CUSTOMER_POINTS = 'customer_points';
 	const TABLE_SUFFIX_TRANSACTIONS    = 'transactions';
@@ -140,8 +140,10 @@ class Database {
 			points_cost_total INT(11) NOT NULL,
 			product_name VARCHAR(255) NULL,
 			sku VARCHAR(100) NULL,
+			idempotency_key VARCHAR(191) NULL,
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY  (id),
+			UNIQUE KEY idempotency_key (idempotency_key),
 			KEY order_id (order_id),
 			KEY customer_id (customer_id),
 			KEY product_id (product_id),

@@ -131,3 +131,17 @@ El loader ejecuta `Database::maybe_upgrade()` para aplicar cambios de esquema cu
 6. El regalo se añade al pedido con coste 0.
 7. El canje se registra como transacción y como fila en `lcter_wcpl_order_rewards`.
 8. El pedido y el order item reciben metadatos para identificar el regalo.
+
+## Flujo De Canje En Checkout
+
+1. El checkout clásico muestra los rewards activos y el saldo actual.
+2. El cliente elige no canjear o indica cantidades enteras de uno o varios rewards.
+3. `Reward_Redemption_Service` valida subtotal mínimo, disponibilidad, costes de base de datos y saldo total.
+4. El adaptador sincroniza líneas de carrito diferenciadas y fuerza su precio a cero.
+5. Al crear el pedido se copian las marcas internas y la selección queda en estado `pending_payment`; todavía no se descuentan puntos.
+6. Cuando WooCommerce considera pagado el pedido, el canje se procesa con prioridad 5.
+7. El saldo se descuenta atómicamente con clave `redeemed_order:{order_id}`.
+8. Cada reward se registra idempotentemente en `lcter_wcpl_order_rewards`.
+9. Solo después, con prioridad 10, se acreditan los puntos generados por el propio pedido.
+
+Si el pedido nunca se paga, no se descuentan puntos. No se implementa reserva de saldo en esta fase.

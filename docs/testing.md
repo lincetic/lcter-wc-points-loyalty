@@ -120,6 +120,51 @@ Mientras no exista infraestructura PHPUnit:
 9. Desmarcar “Regalo canjeable” y confirmar que se elimina la fila del producto.
 10. Repetir un guardado con nonce inválido o sin capacidad de edición y confirmar que no cambia la tabla.
 
+## Pruebas Del Canje En Checkout
+
+Casos de servicio:
+
+* Subtotal inferior a 6.000 céntimos rechaza el canje.
+* El mínimo usa subtotal más IVA y no incluye portes.
+* Uno o varios rewards y varias unidades calculan el coste total desde la base de datos.
+* Cantidades negativas, decimales o no numéricas se rechazan.
+* Rewards inactivos, futuros o caducados se rechazan.
+* El coste enviado por el navegador se ignora.
+* El total superior al balance se rechaza.
+* Los puntos generados por el propio pedido se excluyen del saldo disponible en reintentos.
+
+Casos de carrito y pedido:
+
+* “No canjear mis puntos” elimina cualquier línea de reward del carrito.
+* Un producto normal y el mismo producto como reward permanecen como líneas separadas.
+* Repetir la selección sustituye controladamente las líneas reward y no crea duplicados.
+* Todas las líneas reward tienen subtotal, total e impuestos iguales a cero.
+* Carrito y pedido muestran la etiqueta `REGALO`.
+* Cada order item contiene `_lcter_wcpl_is_reward`, `_lcter_wcpl_reward_id`, `_lcter_wcpl_points_cost_each` y `_lcter_wcpl_points_cost_total`.
+* Crear un pedido impagado deja el canje en `pending_payment` y no descuenta puntos.
+* Al pagar se crea una transacción `redeemed` y una fila por reward en `lcter_wcpl_order_rewards`.
+* Repetir todos los hooks de pago no descuenta ni registra dos veces.
+* Un fallo después de descontar puede reintentarse para completar filas ausentes.
+
+## Pruebas Manuales De Fase 4
+
+1. Con un cliente sin sesión, confirmar que solo se ofrece no canjear y se solicita iniciar sesión.
+2. Con subtotal de 59,99 EUR más portes, confirmar que no se permite canjear.
+3. Con subtotal de 60 EUR IVA incluido y cualquier porte, seleccionar dos rewards y varias unidades.
+4. Manipular desde el navegador cantidades, reward ID y valores visuales; confirmar que servidor usa rewards y costes de base de datos o rechaza la petición.
+5. Enviar nonce inválido y confirmar que no se crean líneas reward.
+6. Elegir “No canjear mis puntos” y confirmar que no se añaden regalos ni se descuentan puntos.
+7. Crear un pedido con pago diferido y confirmar líneas a coste cero, metadatos completos y estado `pending_payment`, sin transacción `redeemed`.
+8. Completar el pago y confirmar que el canje se ejecuta antes de la acumulación del pedido.
+9. Confirmar una única transacción `redeemed_order:{order_id}`, con saldo anterior/posterior y puntos negativos.
+10. Confirmar una fila por reward con clave `redeemed_order:{order_id}:reward:{reward_id}`.
+11. Confirmar `_lcter_wcpl_order_rewards`, `_lcter_wcpl_reward_redemption_status=completed` y `_lcter_wcpl_order_reward_id` en los items.
+12. Repetir cambios a `processing` y `completed`; comprobar que saldo y filas no cambian.
+13. Reducir el saldo entre creación y pago; confirmar que el canje se rechaza sin saldo negativo y los regalos se retiran.
+14. Simular un fallo al insertar una fila de `order_rewards`; reintentar el hook y comprobar que no se vuelve a descontar.
+
+Alcance: estas pruebas corresponden al checkout clásico. Checkout Blocks queda pendiente.
+
 ## Pruebas De Clientify
 
 Casos:

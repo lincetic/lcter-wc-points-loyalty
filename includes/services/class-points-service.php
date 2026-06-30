@@ -37,6 +37,18 @@ class Points_Service {
 		return $this->points->get_balance( $customer_id );
 	}
 
+	public function has_idempotency_key( string $idempotency_key ): bool {
+		return $this->transactions->exists_by_idempotency_key( $idempotency_key );
+	}
+
+	public function has_order_transaction( int $order_id, string $type ): bool {
+		return $this->transactions->exists_for_order_and_type( $order_id, $type );
+	}
+
+	public function get_order_transaction_points( int $order_id, string $type ): int {
+		return $this->transactions->get_points_for_order_and_type( $order_id, $type );
+	}
+
 	/**
 	 * Add points and the corresponding audit transaction atomically.
 	 */
@@ -118,7 +130,8 @@ class Points_Service {
 		?int $order_id = null,
 		?int $order_item_id = null,
 		?string $description = null,
-		$metadata = null
+		$metadata = null,
+		?string $idempotency_key = null
 	): bool {
 		if ( $customer_id <= 0 || $points <= 0 || ! $this->transaction_manager->begin() ) {
 			return false;
@@ -126,7 +139,19 @@ class Points_Service {
 
 		try {
 			$balance_before = $this->points->lock_balance( $customer_id );
-			if ( null === $balance_before || $balance_before < $points ) {
+			if ( null === $balance_before ) {
+				throw new \RuntimeException( 'Could not lock the customer balance.' );
+			}
+
+			if ( $idempotency_key && $this->transactions->exists_by_idempotency_key( $idempotency_key ) ) {
+				return $this->transaction_manager->commit();
+			}
+
+			if ( $idempotency_key && $order_id && $this->transactions->exists_for_order_and_type( $order_id, Database::TRANSACTION_REDEEMED ) ) {
+				return $this->transaction_manager->commit();
+			}
+
+			if ( $balance_before < $points ) {
 				throw new \RuntimeException( 'Insufficient customer balance.' );
 			}
 
@@ -147,6 +172,7 @@ class Points_Service {
 					'source'         => 'woocommerce_reward',
 					'description'    => $description,
 					'metadata'       => $metadata,
+					'idempotency_key' => $idempotency_key,
 				)
 			) ) {
 				throw new \RuntimeException( 'Could not insert the redemption transaction.' );

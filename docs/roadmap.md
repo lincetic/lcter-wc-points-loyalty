@@ -76,6 +76,18 @@ Incluye:
 * Identificar regalos como REGALO.
 * Registrar transacciones `redeemed`.
 
+Estado: completado para UC-003, UC-004 y UC-005 en el checkout clásico.
+
+* Selector de uno o varios regalos y varias unidades: completado.
+* Opción “No canjear mis puntos”: completado.
+* Mínimo de 60 EUR sobre subtotal con IVA y sin portes: completado.
+* Validación de catálogo, cantidades, coste de base de datos y saldo: completado.
+* Líneas de carrito y pedido a coste cero, identificadas como REGALO: completado.
+* Descuento de puntos al confirmarse el pago, antes de acreditar el pedido actual: completado.
+* Transacción `redeemed`, `order_rewards` y metadatos trazables: completado.
+* Idempotencia y recuperación ante registros parciales: completado.
+* Compatibilidad con Checkout Blocks: pendiente de definición e implementación.
+
 ## Fase 5 - Trazabilidad E Integración
 
 Objetivo: dejar los canjes preparados para administración, informes y Clientify.

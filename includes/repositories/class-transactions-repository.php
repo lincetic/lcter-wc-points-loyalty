@@ -47,6 +47,22 @@ class Transactions_Repository {
 		);
 	}
 
+	public function get_points_for_order_and_type( int $order_id, string $type ): int {
+		global $wpdb;
+
+		if ( $order_id <= 0 || '' === $type ) {
+			return 0;
+		}
+
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT COALESCE(SUM(points), 0) FROM ' . $this->table_name() . ' WHERE order_id = %d AND type = %s',
+				$order_id,
+				$type
+			)
+		);
+	}
+
 	/**
 	 * Insert an immutable balance transaction.
 	 *

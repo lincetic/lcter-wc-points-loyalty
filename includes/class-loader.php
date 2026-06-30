@@ -67,8 +67,10 @@ class Loader {
 		require_once LCTER_WCPL_INCLUDES_DIR . 'repositories/class-order-rewards-repository.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'services/class-points-service.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'services/class-rewards-service.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'services/class-reward-redemption-service.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'adapters/class-woocommerce-orders-adapter.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'adapters/class-woocommerce-rewards-adapter.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'adapters/class-woocommerce-checkout-adapter.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'class-customer.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'class-woocommerce.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'class-points-service.php';

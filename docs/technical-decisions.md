@@ -198,3 +198,47 @@ Motivo:
 * Aplicar el límite documentado de aproximadamente 10-12 productos.
 * Permitir preparar campañas futuras o conservar campañas finalizadas sin borrarlas.
 * Mantener las fechas coherentes con la zona horaria configurada en WordPress.
+
+## TD-018 - Subtotal Mínimo Para Canje
+
+Decisión: en la Fase 4 el mínimo de 60 EUR se calcula con `WC_Cart::get_subtotal()` más `get_subtotal_tax()`.
+
+Motivo:
+
+* Incluye IVA.
+* Excluye portes y su impuesto.
+* Al usar subtotal, se evalúa antes de cupones y descuentos de carrito.
+* Las líneas de reward tienen precio cero y no alteran el mínimo.
+
+## TD-019 - Canje Diferido Hasta El Pago
+
+Decisión: el checkout valida y guarda la selección, pero los puntos se descuentan únicamente cuando `WC_Order::is_paid()` es verdadero.
+
+Los hooks de canje usan prioridad 5 y la acumulación del pedido prioridad 10.
+
+Motivo:
+
+* Un pedido abandonado o impagado no consume saldo.
+* El pedido actual no puede financiar su propio canje.
+* El saldo y el catálogo se revalidan inmediatamente antes del descuento.
+
+No se reserva saldo entre creación y pago. Esta política queda como pregunta abierta para métodos de pago diferidos.
+
+## TD-020 - Idempotencia Y Recuperación Del Canje
+
+Decisión: cada pedido genera como máximo una transacción `redeemed` con clave `redeemed_order:{order_id}`. Cada reward agregado genera una fila con clave `redeemed_order:{order_id}:reward:{reward_id}`.
+
+Motivo:
+
+* Repetir hooks de pago no vuelve a descontar puntos.
+* Si la petición termina después del descuento pero antes de completar `order_rewards`, un reintento rellena únicamente las filas ausentes.
+* El pedido guarda estados `pending_payment`, `processing_error`, `rejected` o `completed` para diagnóstico.
+
+## TD-021 - Alcance Del Checkout Clásico
+
+Decisión: el selector de esta fase usa hooks del checkout clásico de WooCommerce.
+
+Motivo:
+
+* Los Checkout Blocks requieren una integración Store API y componentes específicos.
+* La API externa y REST están fuera del alcance solicitado para esta fase.

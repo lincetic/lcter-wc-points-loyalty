@@ -10,20 +10,18 @@ Este documento recoge aspectos no definidos en `AGENTS.md`, `docs/business-rules
 4. ¿Los puntos caducan realmente o la opción de expiración queda fuera del alcance actual?
 5. ¿Qué debe pasar con los puntos si un pedido pagado se cancela o se reembolsa?
 6. ¿Qué debe pasar con los regalos si el pedido se cancela o se reembolsa?
-7. ¿El mínimo de 60 EUR para canje se calcula sobre carrito antes o después de descuentos?
-8. ¿El mínimo de 60 EUR para canje excluye portes o incluye portes?
-9. ¿El catálogo trimestral de regalos se cambia manualmente o debe existir automatización por fechas?
-10. ¿Debe mostrarse al cliente el coste en puntos calculado desde el precio del producto o debe guardarse manualmente?
-11. ¿Deben acumular puntos los pedidos de invitado y, en ese caso, cómo se vinculan posteriormente a un `customer_id` sin duplicar saldo?
-12. ¿Las variaciones deben poder configurarse como rewards independientes o solo el producto principal?
+7. ¿El catálogo trimestral de regalos se cambia manualmente o debe existir automatización por fechas?
+8. ¿Debe mostrarse al cliente el coste en puntos calculado desde el precio del producto o debe guardarse manualmente?
+9. ¿Deben acumular puntos los pedidos de invitado y, en ese caso, cómo se vinculan posteriormente a un `customer_id` sin duplicar saldo?
+10. ¿Las variaciones deben poder configurarse como rewards independientes o solo el producto principal?
 
 ## Checkout Y Experiencia De Cliente
 
-1. ¿En qué punto exacto del checkout se eligen los regalos?
-2. ¿Cómo debe presentarse la opción "No canjear mis puntos"?
-3. ¿Debe el cliente poder modificar regalos después de crear el pedido?
-4. ¿Qué mensaje se muestra cuando no hay saldo suficiente?
-5. ¿Qué mensaje se muestra cuando el pedido no llega al mínimo de 60 EUR?
+1. ¿Debe el cliente poder modificar regalos después de crear el pedido?
+2. ¿Debe reservarse saldo entre la creación y el pago para métodos diferidos, o basta con revalidar y retirar el regalo si el saldo deja de ser suficiente?
+3. ¿Qué política definitiva debe aplicarse si el coste o la disponibilidad de un reward cambia entre checkout y pago?
+4. ¿Cuándo debe añadirse compatibilidad con WooCommerce Checkout Blocks y Store API?
+5. ¿Debe existir una acción administrativa o tarea automática para reintentar canjes con estado `processing_error`?
 
 ## Administración
 
