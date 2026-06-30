@@ -8,6 +8,7 @@
 namespace LCTER_WCPL;
 
 use LCTER_WCPL\Adapters\WooCommerce_Rewards_Adapter;
+use LCTER_WCPL\Services\Reward_Traceability_Service;
 use LCTER_WCPL\Services\Rewards_Service;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -51,11 +52,19 @@ class Rewards {
 	}
 
 	public static function get_order_rewards( int $order_id ): array {
-		return ( new Rewards_Service() )->get_order_rewards( $order_id );
+		return ( new Reward_Traceability_Service() )->get_rewards_by_order( $order_id );
 	}
 
 	public static function get_customer_rewards( int $customer_id ): array {
-		return ( new Rewards_Service() )->get_customer_rewards( $customer_id );
+		return ( new Reward_Traceability_Service() )->get_rewards_by_customer( $customer_id );
+	}
+
+	public static function get_integration_payload_by_order( int $order_id ): array {
+		return ( new Reward_Traceability_Service() )->get_integration_payload_by_order( $order_id );
+	}
+
+	public static function get_integration_payload_by_customer( int $customer_id ): array {
+		return ( new Reward_Traceability_Service() )->get_integration_payload_by_customer( $customer_id );
 	}
 
 	public static function get_rewards_by_order_id( int $order_id ): array {

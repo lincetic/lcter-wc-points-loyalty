@@ -63,6 +63,25 @@ Datos disponibles para integración:
 * SKU
 * fecha de registro
 
+### Servicio De Trazabilidad Preparado
+
+`Reward_Traceability_Service` usa `lcter_wcpl_order_rewards` como fuente principal y ofrece:
+
+* `get_rewards_by_order( $order_id )`
+* `get_rewards_by_customer( $customer_id )`
+* `get_integration_payload_by_order( $order_id )`
+* `get_integration_payload_by_customer( $customer_id )`
+
+Las fachadas equivalentes están disponibles en `LCTER_WCPL\Rewards`.
+
+Los payloads internos incluyen fuente, identificador consultado, cantidad total, puntos totales y filas normalizadas con pedido, cliente, producto, order item, reward, cantidad, costes, nombre, SKU y fecha.
+
+Estos métodos no realizan peticiones externas, no exponen endpoints y no mantienen estado de sincronización.
+
+### Administración WooCommerce
+
+La edición del pedido muestra una sección “Regalos canjeados” obtenida directamente de `lcter_wcpl_order_rewards`. Los metadatos del pedido y del order item siguen disponibles como apoyo visual y referencia cruzada, pero no sustituyen a la tabla principal.
+
 ## Pendiente De Definir
 
 No está documentado todavía:
@@ -71,5 +90,6 @@ No está documentado todavía:
 * Formato exacto esperado por Clientify.
 * Momento exacto de envío o consulta.
 * Reintentos, errores y auditoría de sincronización.
+* Paginación, consultas incrementales y política de retención para historiales grandes.
 
 Estas dudas están recogidas en `docs/open-questions.md`.

@@ -33,3 +33,12 @@
 #lcter_wcpl_product_panel .options_group {
     padding: 12px 0;
 }
+
+.lcter-wcpl-order-rewards {
+    clear: both;
+    margin: 16px 24px;
+}
+
+.lcter-wcpl-order-rewards table {
+    margin-top: 10px;
+}

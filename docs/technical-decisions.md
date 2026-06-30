@@ -242,3 +242,16 @@ Motivo:
 
 * Los Checkout Blocks requieren una integración Store API y componentes específicos.
 * La API externa y REST están fuera del alcance solicitado para esta fase.
+
+## TD-022 - Servicio De Trazabilidad Neutral
+
+Decisión: `Reward_Traceability_Service` concentra las consultas de regalos canjeados y genera payloads internos neutrales por pedido o cliente.
+
+Motivo:
+
+* Mantener `lcter_wcpl_order_rewards` como fuente principal para administración, informes e integraciones.
+* Evitar que una futura integración Clientify dependa de HTML administrativo o de metadatos WooCommerce.
+* Normalizar identificadores y cantidades como enteros y conservar nombre, SKU y fecha como snapshot histórico.
+* Permitir que API, webhook, CSV o sincronización consuman el mismo servicio cuando se defina el mecanismo externo.
+
+La pantalla de pedido usa capacidad de edición del pedido o `manage_woocommerce` y escapa todos los valores al renderizar. No se implementa ninguna operación externa en esta decisión.

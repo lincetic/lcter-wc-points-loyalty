@@ -8,6 +8,7 @@
 namespace LCTER_WCPL;
 
 use LCTER_WCPL\Services\Points_Service as Application_Points_Service;
+use LCTER_WCPL\Services\Reward_Traceability_Service;
 use LCTER_WCPL\Services\Rewards_Service;
 
 // Exit if accessed directly.
@@ -95,6 +96,7 @@ class Admin {
 		add_filter( 'woocommerce_product_data_tabs', array( $this, 'product_tab' ) );
 		add_action( 'woocommerce_product_data_panels', array( $this, 'product_panel' ) );
 		add_action( 'woocommerce_process_product_meta', array( $this, 'save_reward_product' ) );
+		add_action( 'woocommerce_admin_order_data_after_payment_info', array( $this, 'render_order_rewards' ), 20, 1 );
 	}
 
 	/**
@@ -235,6 +237,85 @@ class Admin {
 			</form>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Render redeemed reward traceability in the WooCommerce order screen.
+	 *
+	 * @param mixed $order WooCommerce order.
+	 */
+	public function render_order_rewards( $order ): void {
+		if ( ! $order || ! is_callable( array( $order, 'get_id' ) ) ) {
+			return;
+		}
+
+		$order_id = (int) $order->get_id();
+		if ( ! current_user_can( 'edit_shop_order', $order_id ) && ! current_user_can( 'manage_woocommerce' ) ) {
+			return;
+		}
+
+		$traceability = new Reward_Traceability_Service();
+		$rewards     = $traceability->get_rewards_by_order( $order_id );
+		$total_points = array_sum( array_column( $rewards, 'points_cost_total' ) );
+
+		?>
+		<div class="lcter-wcpl-order-rewards">
+			<h3><?php esc_html_e( 'Regalos canjeados', LCTER_WCPL_TEXT_DOMAIN ); ?></h3>
+			<p class="description">
+				<?php esc_html_e( 'Fuente principal: tabla de trazabilidad de rewards del plugin.', LCTER_WCPL_TEXT_DOMAIN ); ?>
+			</p>
+
+			<?php if ( empty( $rewards ) ) : ?>
+				<p><?php esc_html_e( 'Este pedido no tiene regalos canjeados registrados.', LCTER_WCPL_TEXT_DOMAIN ); ?></p>
+			<?php else : ?>
+				<table class="widefat striped">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Producto', LCTER_WCPL_TEXT_DOMAIN ); ?></th>
+							<th><?php esc_html_e( 'SKU', LCTER_WCPL_TEXT_DOMAIN ); ?></th>
+							<th><?php esc_html_e( 'Cantidad', LCTER_WCPL_TEXT_DOMAIN ); ?></th>
+							<th><?php esc_html_e( 'Puntos/unidad', LCTER_WCPL_TEXT_DOMAIN ); ?></th>
+							<th><?php esc_html_e( 'Puntos totales', LCTER_WCPL_TEXT_DOMAIN ); ?></th>
+							<th><?php esc_html_e( 'Fecha', LCTER_WCPL_TEXT_DOMAIN ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $rewards as $reward ) : ?>
+							<tr>
+								<td><?php echo esc_html( $reward['product_name'] ); ?></td>
+								<td><?php echo esc_html( $reward['sku'] ?: '—' ); ?></td>
+								<td><?php echo esc_html( number_format_i18n( $reward['quantity'] ) ); ?></td>
+								<td><?php echo esc_html( number_format_i18n( $reward['points_cost_each'] ) ); ?></td>
+								<td><?php echo esc_html( number_format_i18n( $reward['points_cost_total'] ) ); ?></td>
+								<td><?php echo esc_html( $this->format_traceability_date( $reward['created_at'] ) ); ?></td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+					<tfoot>
+						<tr>
+							<th colspan="4"><?php esc_html_e( 'Total canjeado', LCTER_WCPL_TEXT_DOMAIN ); ?></th>
+							<th><?php echo esc_html( number_format_i18n( $total_points ) ); ?></th>
+							<th></th>
+						</tr>
+					</tfoot>
+				</table>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	private function format_traceability_date( string $datetime ): string {
+		if ( '' === $datetime ) {
+			return '—';
+		}
+
+		$formatted = mysql2date(
+			get_option( 'date_format' ) . ' ' . get_option( 'time_format' ),
+			$datetime,
+			true
+		);
+
+		return $formatted ?: $datetime;
 	}
 
 	/**

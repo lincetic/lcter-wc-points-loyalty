@@ -99,6 +99,14 @@ Incluye:
 * Consulta de regalos por pedido.
 * Consulta de regalos por cliente.
 
+Estado: completado para UC-008 como preparación interna.
+
+* Consulta reutilizable por pedido desde `lcter_wcpl_order_rewards`: completado.
+* Consulta reutilizable por cliente: completado.
+* Sección de regalos canjeados en administración del pedido: completado.
+* Payload interno neutral para futuras integraciones: completado.
+* API, webhook, CSV y sincronización real con Clientify: pendientes y fuera de esta fase.
+
 ## Fase 6 - Bonus Inicial
 
 Objetivo: registrar el saldo inicial documentado.

@@ -173,8 +173,25 @@ Casos:
 * Un canje guarda metadatos en pedido u order item.
 * Se pueden consultar regalos por pedido.
 * Se pueden consultar regalos por cliente.
+* Las consultas por pedido y cliente usan `lcter_wcpl_order_rewards`, no metadatos como fuente principal.
+* El payload por pedido incluye totales y filas normalizadas.
+* El payload por cliente incluye todos sus pedidos registrados y totales agregados.
+* Los métodos preparatorios no realizan llamadas HTTP, webhooks ni exportaciones.
 
 Reglas: BR-015.
+
+## Pruebas Manuales De Fase 5
+
+1. Abrir en administración un pedido sin canjes y confirmar el mensaje de ausencia de regalos.
+2. Abrir un pedido con uno o varios rewards y comprobar la sección “Regalos canjeados”.
+3. Verificar producto, SKU, cantidad, coste unitario, coste total y fecha contra `lcter_wcpl_order_rewards`.
+4. Cambiar posteriormente el nombre o SKU del producto y confirmar que se conserva el snapshot registrado en el canje.
+5. Confirmar que un usuario sin capacidad para editar pedidos ni `manage_woocommerce` no obtiene la sección.
+6. Probar `Reward_Traceability_Service::get_rewards_by_order()` con ID válido, inválido y sin resultados.
+7. Probar `get_rewards_by_customer()` con un cliente con canjes en varios pedidos.
+8. Comparar `get_integration_payload_by_order()` y `get_integration_payload_by_customer()` con las filas de la tabla.
+9. Confirmar que nombre, SKU y demás valores almacenados se escapan en la pantalla administrativa.
+10. Confirmar que no se registra tráfico HTTP, webhook, CSV ni estado de sincronización.
 
 ## Pruebas De Seguridad
 

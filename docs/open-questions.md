@@ -38,6 +38,8 @@ Este documento recoge aspectos no definidos en `AGENTS.md`, `docs/business-rules
 3. ¿Cuándo debe enviarse o sincronizarse la información?
 4. ¿Qué debe ocurrir si falla una sincronización?
 5. ¿Debe registrarse estado de sincronización con Clientify?
+6. ¿Cómo debe paginarse o consultarse incrementalmente el historial cuando crezca el volumen de `order_rewards`?
+7. ¿Existe una política de retención o los registros de trazabilidad deben conservarse indefinidamente?
 
 ## Técnica
 
