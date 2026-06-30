@@ -12,6 +12,13 @@ Incluye:
 * Tablas propias del plugin.
 * Convenciones de namespace, prefijo de tablas y textdomain.
 
+Estado estructural:
+
+* Repositorios separados para las cuatro tablas: completado.
+* Servicios separados de adaptadores WooCommerce: completado.
+* Capa administrativa consumiendo servicios: completado.
+* Versión de esquema y migraciones no destructivas: completado.
+
 ## Fase 2 - Modelo De Puntos
 
 Objetivo: permitir acumulación y consulta de saldo.
@@ -23,6 +30,16 @@ Incluye:
 * Cálculo de puntos tras pedido pagado.
 * Registro de transacciones `earned`.
 * Protección contra saldo negativo.
+
+Estado: completado para UC-001 y UC-002.
+
+* Suma y canje atómicos con registro de saldos anterior y posterior: completado.
+* Idempotencia de acumulación por pedido: completado.
+* Detección de pedidos pagados mediante hooks WooCommerce y validación `WC_Order::is_paid()`: completado.
+* Cálculo en céntimos sobre total con IVA, excluyendo portes e impuesto del porte: completado.
+* Registro `earned` y actualización de `balance` y `total_earned`: completado.
+* Consulta de saldo desde servicio, fachada y frontend de cliente: completado.
+* Pruebas automatizadas de concurrencia e integración: pendiente de Fase 7.
 
 ## Fase 3 - Catálogo De Regalos
 

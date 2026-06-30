@@ -45,6 +45,7 @@ Campos:
 * description LONGTEXT NULL
 * metadata LONGTEXT NULL
 * created_by BIGINT UNSIGNED NULL
+* idempotency_key VARCHAR(191) NULL
 * created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 
 Índices:
@@ -55,6 +56,7 @@ Campos:
 * KEY type (type)
 * KEY source (source)
 * KEY created_at (created_at)
+* UNIQUE KEY idempotency_key (idempotency_key)
 
 Tipos:
 
@@ -129,6 +131,12 @@ Campos:
 
 * No usar product_points.
 * No usar points_per_currency.
+* La versión actual del esquema es `1.1.0` y se guarda en la opción `lcter_wcpl_schema_version`.
+* Las instalaciones y actualizaciones usan `dbDelta()` y migraciones no destructivas.
+* Las tablas nuevas se declaran con motor InnoDB para soportar bloqueo de filas y transacciones.
+* Las columnas y tablas legacy no se eliminan automáticamente. Si existe la columna legacy `points`, se copia a `balance` cuando este todavía es cero.
+* La acumulación usa la clave `earned_order:{order_id}`. El índice único evita duplicados sin impedir otros tipos de movimiento para el mismo pedido.
+* También se consulta `order_id` junto con `type` para reconocer acumulaciones anteriores a `idempotency_key`.
 * El cálculo de puntos depende del total del pedido, no del producto.
 * Los regalos son productos WooCommerce configurados como rewards.
 * Los regalos canjeados también deben guardarse como metadatos del pedido o del order item si es necesario para Clientify.

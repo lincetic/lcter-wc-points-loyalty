@@ -99,6 +99,28 @@ Responsabilidades:
 * Exponer o preparar información para Clientify.
 * Usar `lcter_wcpl_order_rewards`, metadatos del pedido o metadatos del order item como fuente de regalos elegidos.
 
+## Estructura Implementada
+
+La implementación separa físicamente y por responsabilidad:
+
+* `includes/repositories/`: acceso SQL a `customer_points`, `transactions`, `rewards` y `order_rewards`, más el límite técnico de transacciones.
+* `includes/services/`: coordinación de casos de aplicación y reglas que no dependen de objetos WooCommerce.
+* `includes/adapters/`: traducción de pedidos, productos y order items WooCommerce.
+* `includes/class-admin.php`: capa administrativa, inicializada únicamente mediante `admin_init` y consumidora de servicios.
+
+`Database` queda limitado a nombres de tabla, instalación, versión y migración de esquema. Las clases públicas `Points`, `Points_Service`, `Rewards` y `WooCommerce` se conservan como fachadas de compatibilidad.
+
+El sentido de las dependencias es:
+
+1. Administración, frontend y adaptadores llaman a servicios.
+2. Los servicios coordinan repositorios.
+3. Los repositorios encapsulan SQL y usan `Database` solo para resolver nombres de tablas.
+4. Los objetos WooCommerce no entran en los repositorios ni en los servicios de saldo.
+
+Las sumas y canjes bloquean la fila del cliente con `SELECT ... FOR UPDATE`. La actualización del saldo y la inserción de su transacción se confirman o revierten juntas. La acumulación por pedido añade una clave de idempotencia única.
+
+El loader ejecuta `Database::maybe_upgrade()` para aplicar cambios de esquema cuando cambia la versión almacenada, incluso si una actualización no reactiva el plugin.
+
 ## Flujo Principal
 
 1. WooCommerce marca un pedido como pagado.

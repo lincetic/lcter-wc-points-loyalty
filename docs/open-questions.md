@@ -14,6 +14,7 @@ Este documento recoge aspectos no definidos en `AGENTS.md`, `docs/business-rules
 8. ¿El mínimo de 60 EUR para canje excluye portes o incluye portes?
 9. ¿El catálogo trimestral de regalos se cambia manualmente o debe existir automatización por fechas?
 10. ¿Debe mostrarse al cliente el coste en puntos calculado desde el precio del producto o debe guardarse manualmente?
+11. ¿Deben acumular puntos los pedidos de invitado y, en ese caso, cómo se vinculan posteriormente a un `customer_id` sin duplicar saldo?
 
 ## Checkout Y Experiencia De Cliente
 
@@ -46,3 +47,6 @@ Este documento recoge aspectos no definidos en `AGENTS.md`, `docs/business-rules
 3. ¿Se requiere compatibilidad con HPOS de WooCommerce?
 4. ¿Qué nivel de PHPStan se debe usar?
 5. ¿Qué conjunto exacto de reglas de WP Coding Standards se aplicará?
+6. ¿Cuándo y mediante qué proceso se retirarán las columnas o tablas legacy conservadas por las migraciones no destructivas?
+7. ¿Debe verificarse o convertirse explícitamente a InnoDB una instalación existente que use un motor sin transacciones?
+8. ¿Cómo deben afectar `refund` y `manual_adjustment` a los acumulados `total_earned` y `total_redeemed`?

@@ -13,6 +13,7 @@ Casos:
 * Pedido de 60,00 EUR sin portes genera 6.000 puntos.
 * Pedido de 60,15 EUR sin portes genera 6.015 puntos.
 * Los portes no suman puntos.
+* Pedido total de 66,20 EUR, con 5,00 EUR de portes y 1,05 EUR de IVA de portes, genera 6.015 puntos.
 
 Reglas: BR-003.
 
@@ -35,6 +36,9 @@ Casos:
 * Cada canje genera transacción.
 * El bonus inicial genera transacción `initial_bonus`.
 * Se guardan `balance_before` y `balance_after`.
+* La acumulación crea `type=earned` e `idempotency_key=earned_order:{order_id}`.
+* Repetir el procesamiento del mismo pedido no crea una segunda transacción ni modifica otra vez el saldo.
+* Una transacción legacy con el mismo `order_id` y `type=earned`, aunque no tenga `idempotency_key`, impide duplicar la acumulación.
 
 Reglas: BR-014, BR-016.
 
@@ -44,6 +48,10 @@ Casos:
 
 * Un pedido no pagado no genera puntos.
 * Un pedido pagado genera puntos.
+* Un pedido en `pending`, `on-hold`, `failed` o `cancelled` no genera puntos porque `is_paid()` es falso.
+* Los hooks `woocommerce_payment_complete`, `woocommerce_order_payment_status_changed`, `woocommerce_order_status_processing` y `woocommerce_order_status_completed` pueden ejecutarse para el mismo pedido sin duplicar puntos.
+* Un pedido sin `customer_id` positivo no genera saldo ni transacción.
+* Tras acumular, el pedido guarda `_lcter_wcpl_points_awarded` como metadato auxiliar.
 * El pedido actual no suma puntos disponibles para su propio canje.
 * Un regalo se añade al pedido con coste 0.
 * El order item queda identificado como REGALO.
@@ -51,6 +59,22 @@ Casos:
 * Se permite más de una unidad del mismo regalo si hay saldo suficiente.
 
 Reglas: BR-002, BR-006, BR-007, BR-009, BR-010.
+
+## Pruebas Manuales De Fase 2
+
+Mientras no exista infraestructura PHPUnit, validar UC-001 y UC-002 en una instalación de desarrollo:
+
+1. Crear un cliente registrado con saldo inexistente o cero.
+2. Crear un pedido de 66,20 EUR que incluya 5,00 EUR de portes y 1,05 EUR de IVA de portes.
+3. Mantener el pedido sin pagar y confirmar que no existen filas nuevas en `lcter_wcpl_customer_points` ni `lcter_wcpl_transactions`.
+4. Marcar el pedido como pagado y confirmar saldo y `total_earned` iguales a 6.015.
+5. Confirmar una única transacción `earned`, con `points=6015`, saldos anterior/posterior correctos, `order_id` e `idempotency_key=earned_order:{order_id}`.
+6. Volver a guardar los estados `processing` y `completed`; confirmar que saldo y número de transacciones no cambian.
+7. Eliminar únicamente el metadato auxiliar del pedido y repetir el hook; confirmar que la transacción sigue evitando el duplicado.
+8. Consultar el saldo desde Mi cuenta y mediante `[lcter_wcpl_customer_points]`.
+9. Repetir con un pedido de invitado y confirmar que no se crea saldo ni transacción.
+
+Resultado esperado: UC-001 y UC-002 se cumplen sin depender del metadato del pedido como garantía de idempotencia.
 
 ## Pruebas De Base De Datos
 

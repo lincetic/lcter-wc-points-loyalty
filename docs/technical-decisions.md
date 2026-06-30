@@ -105,3 +105,68 @@ Motivo:
 
 * `README.md` define esos estándares.
 * `AGENTS.md` exige una arquitectura mantenible, segura y separada por responsabilidades.
+
+## TD-010 - Repositorios Por Agregado Persistente
+
+Decisión: cada tabla principal dispone de un repositorio y `Database` solo administra el esquema.
+
+Motivo:
+
+* Evitar SQL dentro de administración, adaptadores o servicios.
+* Permitir probar servicios sustituyendo sus dependencias.
+* Evitar que una única clase de base de datos concentre todas las responsabilidades.
+
+## TD-011 - Operaciones De Saldo Atómicas
+
+Decisión: las operaciones de suma y canje bloquean la fila de saldo y actualizan saldo e historial dentro de la misma transacción SQL.
+
+Motivo:
+
+* Mantener correctos `balance_before` y `balance_after` ante peticiones concurrentes.
+* Revertir el saldo si no se puede registrar su transacción.
+* Mantener la condición `balance >= puntos` también en el `UPDATE` de canje.
+
+## TD-012 - Idempotencia Mediante Clave Única
+
+Decisión: `lcter_wcpl_transactions.idempotency_key` es nullable y única. La acumulación usa `earned_order:{order_id}`.
+
+Motivo:
+
+* La base de datos es la garantía final frente a callbacks duplicados o concurrentes.
+* El metadato del pedido se conserva como ayuda operativa, pero no es la fuente de idempotencia.
+* Una clave independiente permite varios canjes u otros movimientos para un mismo pedido.
+
+## TD-013 - Versionado Y Migraciones No Destructivas
+
+Decisión: el esquema se versiona con `Database::SCHEMA_VERSION` y la opción `lcter_wcpl_schema_version`.
+
+Motivo:
+
+* Aplicar `dbDelta()` también cuando el plugin se actualiza sin reactivarse.
+* Conservar columnas y tablas legacy hasta que exista una política de retirada documentada.
+* Evitar pérdida de datos durante esta fase estructural.
+
+## TD-014 - Detección Y Cálculo De Puntos Tras Pago
+
+Decisión: la acumulación escucha `woocommerce_payment_complete`, `woocommerce_order_payment_status_changed`, `woocommerce_order_status_processing` y `woocommerce_order_status_completed`, pero siempre exige que `WC_Order::is_paid()` sea verdadero.
+
+El importe acumulable se convierte a céntimos y se calcula así:
+
+`total del pedido - total de portes - impuesto de portes`
+
+Motivo:
+
+* Cubrir pagos inmediatos, métodos diferidos y cambios manuales a estados pagados.
+* Evitar acumulación durante checkout o en pedidos no pagados.
+* Aplicar exactamente la equivalencia documentada de un céntimo por punto.
+* Restar tanto el importe neto del porte como su IVA, manteniendo incluido el IVA del resto del pedido.
+
+## TD-015 - Pedidos Sin Cliente Registrado
+
+Decisión: durante la Fase 2 solo acumulan pedidos con `customer_id` positivo. Los pedidos de invitado no crean saldo ni transacción.
+
+Motivo:
+
+* `lcter_wcpl_customer_points` identifica el saldo mediante `customer_id`.
+* No está definido cómo asociar de forma estable un pedido de invitado a un saldo de fidelización.
+* La política futura queda registrada en `docs/open-questions.md`.

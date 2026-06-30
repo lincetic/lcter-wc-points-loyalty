@@ -25,9 +25,8 @@ class Activator {
 	 * Run activation tasks.
 	 */
 	public static function activate(): void {
-		Database::create_tables();
+		Database::install_or_upgrade();
 		self::set_default_options();
-		flush_rewrite_rules();
 	}
 
 	/**

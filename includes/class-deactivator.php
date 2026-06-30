@@ -9,8 +9,6 @@ declare( strict_types=1 );
 
 namespace LCTER_WCPL;
 
-use function flush_rewrite_rules;
-
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -25,6 +23,6 @@ class Deactivator {
 	 * Run deactivation tasks.
 	 */
 	public static function deactivate(): void {
-		flush_rewrite_rules();
+		// No scheduled task or rewrite rule is registered by the plugin.
 	}
 }

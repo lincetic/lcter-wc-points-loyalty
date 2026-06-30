@@ -13,7 +13,6 @@ use function add_submenu_page;
 use function class_exists;
 use function wp_enqueue_script;
 use function wp_enqueue_style;
-use function flush_rewrite_rules;
 use function __;
 
 // Exit if accessed directly.
@@ -50,6 +49,7 @@ class Loader {
 	 */
 	private function __construct() {
 		$this->load_includes();
+		Database::maybe_upgrade();
 		$this->register_hooks();
 	}
 
@@ -60,7 +60,15 @@ class Loader {
 		require_once LCTER_WCPL_INCLUDES_DIR . 'class-database.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'class-activator.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'class-deactivator.php';
-		require_once LCTER_WCPL_INCLUDES_DIR . 'class-admin.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'repositories/class-transaction-manager.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'repositories/class-customer-points-repository.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'repositories/class-transactions-repository.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'repositories/class-rewards-repository.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'repositories/class-order-rewards-repository.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'services/class-points-service.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'services/class-rewards-service.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'adapters/class-woocommerce-orders-adapter.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'adapters/class-woocommerce-rewards-adapter.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'class-customer.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'class-woocommerce.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'class-points-service.php';
@@ -82,6 +90,7 @@ class Loader {
 	 * Admin initialization.
 	 */
 	public function admin_init(): void {
+		require_once LCTER_WCPL_INCLUDES_DIR . 'class-admin.php';
 		Admin::instance();
 	}
 
@@ -136,17 +145,13 @@ class Loader {
 	 * Plugin activation.
 	 */
 	public static function activate() {
-		Database::create_tables();
-
-		// Flush rewrite rules.
-		flush_rewrite_rules();
+		Database::install_or_upgrade();
 	}
 
 	/**
 	 * Plugin deactivation.
 	 */
 	public static function deactivate() {
-		// Flush rewrite rules.
-		flush_rewrite_rules();
+		// No persistent task is registered during deactivation.
 	}
 }

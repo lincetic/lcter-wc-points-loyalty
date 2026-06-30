@@ -1,42 +1,27 @@
 <?php
 /**
- * WooCommerce integration class.
+ * Backward-compatible WooCommerce adapter facade.
  *
  * @package LCTER_WC_Points_Loyalty
  */
 
-declare( strict_types=1 );
-
 namespace LCTER_WCPL;
 
-use function add_action;
-use function wc_get_order;
+use LCTER_WCPL\Adapters\WooCommerce_Orders_Adapter;
 
-// Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-/**
- * WooCommerce integration class.
- */
 class WooCommerce {
+	private static ?WooCommerce_Orders_Adapter $orders_adapter = null;
 
-	/**
-	 * Register WooCommerce-specific hooks.
-	 */
 	public static function init(): void {
-		add_action( 'woocommerce_payment_complete', array( __CLASS__, 'on_order_paid' ) );
-		add_action( 'woocommerce_order_status_processing', array( __CLASS__, 'on_order_paid' ) );
-		add_action( 'woocommerce_order_status_completed', array( __CLASS__, 'on_order_paid' ) );
+		self::$orders_adapter = self::$orders_adapter ?? new WooCommerce_Orders_Adapter();
+		self::$orders_adapter->register_hooks();
 	}
 
-	/**
-	 * When an order is paid, award points.
-	 *
-	 * @param int $order_id Order ID.
-	 */
 	public static function on_order_paid( int $order_id ): void {
-		Points_Service::handle_order_paid( $order_id );
+		( new WooCommerce_Orders_Adapter() )->on_order_paid( $order_id );
 	}
 }

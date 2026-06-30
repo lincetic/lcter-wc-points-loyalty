@@ -7,6 +7,9 @@
 
 namespace LCTER_WCPL;
 
+use LCTER_WCPL\Services\Points_Service as Application_Points_Service;
+use LCTER_WCPL\Services\Rewards_Service;
+
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -121,9 +124,10 @@ class Admin {
 			wp_die( esc_html__( 'No tienes permiso para acceder a esta pagina.', LCTER_WCPL_TEXT_DOMAIN ) );
 		}
 
-		$total_customers       = Database::get_total_customers();
-		$total_points_issued   = Database::get_total_points_issued();
-		$total_points_redeemed = Database::get_total_points_redeemed();
+		$totals                = ( new Application_Points_Service() )->get_dashboard_totals();
+		$total_customers       = $totals['customers'];
+		$total_points_issued   = $totals['earned'];
+		$total_points_redeemed = $totals['redeemed'];
 
 		?>
 		<div class="wrap">
@@ -238,7 +242,8 @@ class Admin {
 	public function product_panel(): void {
 		global $post;
 
-		$reward = $post ? Database::get_reward_by_product( (int) $post->ID ) : null;
+		$rewards_service = new Rewards_Service();
+		$reward           = $post ? $rewards_service->get_reward_by_product( (int) $post->ID ) : null;
 
 		?>
 		<div id="lcter_wcpl_product_panel" class="panel woocommerce_options_panel">
@@ -306,16 +311,17 @@ class Admin {
 
 		$product_id  = (int) $product_id;
 		$points_cost = isset( $_POST['lcter_wcpl_reward_points_cost'] ) ? absint( wp_unslash( $_POST['lcter_wcpl_reward_points_cost'] ) ) : 0;
-		$reward      = Database::get_reward_by_product( $product_id );
+		$service     = new Rewards_Service();
+		$reward      = $service->get_reward_by_product( $product_id );
 
 		if ( $points_cost <= 0 ) {
 			if ( $reward ) {
-				Database::delete_reward( (int) $reward['id'] );
+				$service->delete_reward( (int) $reward['id'] );
 			}
 			return;
 		}
 
-		Database::save_reward(
+		$service->save_reward(
 			array(
 				'id'          => $reward ? (int) $reward['id'] : 0,
 				'product_id'  => $product_id,

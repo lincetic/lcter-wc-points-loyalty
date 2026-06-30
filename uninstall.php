@@ -23,4 +23,5 @@ if ( '1' === $remove_data ) {
 	delete_option( 'lcter_wcpl_points_expiry_days' );
 	delete_option( 'lcter_wcpl_enable_notifications' );
 	delete_option( 'lcter_wcpl_remove_data_on_uninstall' );
+	delete_option( 'lcter_wcpl_schema_version' );
 }
