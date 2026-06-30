@@ -66,6 +66,7 @@ class Loader {
 		require_once LCTER_WCPL_INCLUDES_DIR . 'repositories/class-rewards-repository.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'repositories/class-order-rewards-repository.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'services/class-points-service.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'services/class-initial-bonus-service.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'services/class-rewards-service.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'services/class-reward-redemption-service.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'services/class-reward-traceability-service.php';
@@ -96,9 +97,11 @@ class Loader {
 		require_once LCTER_WCPL_INCLUDES_DIR . 'class-admin.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'admin/class-reward-product-admin.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'admin/class-order-traceability-admin.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'admin/class-initial-bonus-admin.php';
 		Admin::instance();
 		Admin_UI\Reward_Product_Admin::instance();
 		Admin_UI\Order_Traceability_Admin::instance();
+		Admin_UI\Initial_Bonus_Admin::instance();
 	}
 
 	/**

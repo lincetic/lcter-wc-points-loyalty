@@ -225,6 +225,7 @@ Configuracion inicial disponible:
 * `phpstan.neon.dist`: nivel inicial 5 con extensiones de WordPress.
 * `phpcs.xml.dist`: reglas WordPress, WordPress-Extra y WordPress-Docs.
 * `tests/Unit/PointsServiceTest.php`: saldo negativo, saldos anterior/posterior e idempotencia de `earned_order` y `redeemed_order`.
+* `tests/Unit/InitialBonusServiceTest.php`: importe, tipo, clave idempotente y resumen de ejecuciones repetidas.
 
 Comandos desde la raiz del plugin:
 
@@ -251,6 +252,19 @@ La suite unitaria cubre servicios aislados. Siguen siendo necesarias pruebas de 
 9. Crear un pedido impagado con reward y confirmar `_lcter_wcpl_reward_state=reward_selected` en pedido e item, `REGALO: PENDIENTE DE PAGO` y el aviso administrativo de no preparacion.
 10. Completar el pago y confirmar que, solo tras transaccion y trazabilidad correctas, pedido e item cambian a `reward_redeemed` y `REGALO: CANJEADO`.
 11. Simular `processing_error` y confirmar que el estado permanece `reward_selected`; rechazar el canje y confirmar que las lineas se retiran y el estado del pedido se elimina.
+
+## Pruebas Manuales De Fase 6
+
+1. Acceder al dashboard con `manage_woocommerce` y comprobar el panel "Bonus inicial de clientes".
+2. Intentar enviar sin marcar la confirmacion y verificar que no se procesa ningun cliente.
+3. Enviar con nonce invalido y confirmar que WordPress rechaza la accion.
+4. Ejecutar con un usuario sin `manage_woocommerce` y confirmar acceso denegado.
+5. Crear usuarios con rol `customer` y otros roles; ejecutar y confirmar que solo los primeros se procesan.
+6. Verificar 10.000 puntos adicionales, incremento de `total_earned` y una transaccion `initial_bonus` con `initial_bonus:{customer_id}:10000` por cliente.
+7. Ejecutar de nuevo y confirmar saldo sin cambios, cero bonificados y clientes existentes contabilizados como omitidos.
+8. Forzar un fallo de persistencia y confirmar que se contabiliza como error sin dejar saldo sin transaccion.
+9. Confirmar que el resumen muestra procesados = bonificados + omitidos + errores.
+10. Confirmar que activacion, cron y frontend no ejecutan el bonus y que no se envian emails.
 
 ## Requisitos De Compatibilidad A Validar
 

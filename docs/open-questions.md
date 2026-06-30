@@ -4,9 +4,9 @@ Este documento recoge aspectos no definidos en `AGENTS.md`, `docs/business-rules
 
 ## Producto Y Negocio
 
-1. ¿Cómo debe ejecutarse exactamente el bonus inicial de 10.000 puntos: automáticamente al activar, manual desde administración, por lote o con confirmación?
-2. ¿Cómo se evita duplicar el bonus inicial si se ejecuta más de una vez?
-3. ¿Qué clientes reciben el bonus inicial: todos los usuarios, solo clientes WooCommerce con pedidos, solo clientes activos u otro criterio?
+1. Resuelta para esta fase: el bonus se ejecuta manualmente desde administracion, con confirmacion, y nunca al activar.
+2. Resuelta: se usa la clave unica `initial_bonus:{customer_id}:10000` dentro de la operacion atomica de saldo.
+3. Resuelta para esta fase: solo usuarios WordPress con rol `customer`.
 4. ¿Los puntos caducan realmente o la opción de expiración queda fuera del alcance actual?
 5. ¿Qué debe pasar con los puntos si un pedido pagado se cancela o se reembolsa?
 6. ¿Qué debe pasar con los regalos si el pedido se cancela o se reembolsa?
@@ -14,6 +14,8 @@ Este documento recoge aspectos no definidos en `AGENTS.md`, `docs/business-rules
 8. ¿Debe mostrarse al cliente el coste en puntos calculado desde el precio del producto o debe guardarse manualmente?
 9. ¿Deben acumular puntos los pedidos de invitado y, en ese caso, cómo se vinculan posteriormente a un `customer_id` sin duplicar saldo?
 10. ¿Las variaciones deben poder configurarse como rewards independientes o solo el producto principal?
+
+11. ¿Debe ampliarse en el futuro el bonus a otros roles, clientes invitados vinculados posteriormente o usuarios que hayan comprado sin conservar el rol `customer`?
 
 ## Checkout Y Experiencia De Cliente
 

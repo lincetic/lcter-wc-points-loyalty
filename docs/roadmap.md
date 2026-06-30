@@ -127,7 +127,15 @@ Incluye:
 
 * Proceso para añadir 10.000 puntos iniciales.
 * Transacciones de tipo `initial_bonus`.
-* Evitar duplicados según criterio pendiente de definir.
+* Evitar duplicados mediante clave idempotente por cliente e importe.
+
+Estado de Fase 6: completado para UC-007 con criterio inicial limitado al rol WordPress `customer`.
+
+* Accion manual en el dashboard con capacidad `manage_woocommerce`, nonce y confirmacion: completada.
+* Asignacion atomica de 10.000 puntos y transaccion `initial_bonus`: completada.
+* Idempotencia `initial_bonus:{customer_id}:10000`: completada.
+* Resumen de procesados, bonificados, omitidos y errores: completado.
+* Ejecucion automatica, WP-CLI y comunicaciones por email: no implementadas.
 
 ## Fase 7 - Calidad
 

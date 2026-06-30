@@ -19,6 +19,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class Points_Service {
+	const RESULT_ADDED     = 'added';
+	const RESULT_DUPLICATE = 'duplicate';
+	const RESULT_FAILED    = 'failed';
+
 	private Customer_Points_Repository $points;
 	private Transactions_Repository $transactions;
 	private Transaction_Manager $transaction_manager;
@@ -64,12 +68,43 @@ class Points_Service {
 		?int $created_by = null,
 		?string $idempotency_key = null
 	): bool {
+		return self::RESULT_FAILED !== $this->add_points_with_status(
+			$customer_id,
+			$points,
+			$type,
+			$order_id,
+			$order_item_id,
+			$source,
+			$description,
+			$metadata,
+			$created_by,
+			$idempotency_key
+		);
+	}
+
+	/**
+	 * Add points atomically and report whether the operation was new or duplicate.
+	 *
+	 * @return string One of the RESULT_* constants.
+	 */
+	public function add_points_with_status(
+		int $customer_id,
+		int $points,
+		string $type = Database::TRANSACTION_EARNED,
+		?int $order_id = null,
+		?int $order_item_id = null,
+		?string $source = null,
+		?string $description = null,
+		$metadata = null,
+		?int $created_by = null,
+		?string $idempotency_key = null
+	): string {
 		if ( $customer_id <= 0 || $points <= 0 || '' === $type ) {
-			return false;
+			return self::RESULT_FAILED;
 		}
 
 		if ( ! $this->transaction_manager->begin() ) {
-			return false;
+			return self::RESULT_FAILED;
 		}
 
 		try {
@@ -79,11 +114,19 @@ class Points_Service {
 			}
 
 			if ( $idempotency_key && $this->transactions->exists_by_idempotency_key( $idempotency_key ) ) {
-				return $this->transaction_manager->commit();
+				if ( ! $this->transaction_manager->commit() ) {
+					throw new \RuntimeException( 'Could not commit the duplicate points transaction check.' );
+				}
+
+				return self::RESULT_DUPLICATE;
 			}
 
 			if ( Database::TRANSACTION_EARNED === $type && $order_id && $this->transactions->exists_for_order_and_type( $order_id, $type ) ) {
-				return $this->transaction_manager->commit();
+				if ( ! $this->transaction_manager->commit() ) {
+					throw new \RuntimeException( 'Could not commit the legacy duplicate transaction check.' );
+				}
+
+				return self::RESULT_DUPLICATE;
 			}
 
 			$balance_after = $balance_before + $points;
@@ -114,10 +157,10 @@ class Points_Service {
 				throw new \RuntimeException( 'Could not commit the points transaction.' );
 			}
 
-			return true;
+			return self::RESULT_ADDED;
 		} catch ( \Throwable $exception ) {
 			$this->transaction_manager->rollback();
-			return false;
+			return self::RESULT_FAILED;
 		}
 	}
 

@@ -146,6 +146,8 @@ class Admin {
 					<p class="stat-value"><?php echo intval( $total_points_redeemed ); ?></p>
 				</div>
 			</div>
+
+			<?php do_action( 'lcter_wcpl_dashboard_after_stats' ); ?>
 		</div>
 		<?php
 	}

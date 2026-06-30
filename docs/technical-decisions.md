@@ -269,3 +269,11 @@ Motivo:
 * Permitir que API, webhook, CSV o sincronización consuman el mismo servicio cuando se defina el mecanismo externo.
 
 La pantalla de pedido usa capacidad de edición del pedido o `manage_woocommerce` y escapa todos los valores al renderizar. No se implementa ninguna operación externa en esta decisión.
+
+## TD-023 - Bonus Inicial Manual E Idempotente
+
+Decision: el bonus inicial se ejecuta exclusivamente desde una accion manual del dashboard por usuarios con `manage_woocommerce`. Requiere nonce y una confirmacion explicita. No se ejecuta durante activacion ni en tareas automaticas.
+
+En esta fase se procesan solo usuarios WordPress con rol `customer`. Cada cliente recibe 10.000 puntos mediante la operacion atomica de saldo y una transaccion `initial_bonus` con clave `initial_bonus:{customer_id}:10000`. La clave unica y la comprobacion dentro del bloqueo de saldo hacen segura la repeticion y permiten clasificar cada resultado como bonificado, omitido o error.
+
+El resumen se guarda temporalmente por administrador y muestra procesados, bonificados, omitidos y errores tras la redireccion. El criterio de clientes puede cambiar en una fase posterior; no incluye invitados ni otros roles.
