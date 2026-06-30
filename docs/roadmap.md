@@ -137,6 +137,25 @@ Estado de Fase 6: completado para UC-007 con criterio inicial limitado al rol Wo
 * Resumen de procesados, bonificados, omitidos y errores: completado.
 * Ejecucion automatica, WP-CLI y comunicaciones por email: no implementadas.
 
+## Cancelaciones Y Reembolsos Totales
+
+Estado: implementado para puntos generados por pedidos cancelados o con estado `refunded` total.
+
+* Deteccion mediante transaccion `earned` del pedido: completada.
+* Reversion atomica `cancelled` con `cancelled_order:{order_id}`: completada.
+* Proteccion contra saldo negativo y estado operativo `processing_error`: completada.
+* Reembolsos parciales, devolucion de regalos y reapertura de pedidos: pendientes de definicion.
+
+## Recuperacion Operativa En Pedidos
+
+Estado: accion administrativa basica completada.
+
+* Visualizacion de `processing_error` de canje y reversion: completada.
+* Visualizacion informativa de canjes `rejected`: completada, sin reintento.
+* Reintento protegido por `manage_woocommerce` y nonce: completado.
+* Reutilizacion de servicios y claves idempotentes existentes: completada.
+* Listado global, reintento por lotes y automatizacion: pendientes.
+
 ## Fase 7 - Calidad
 
 Objetivo: consolidar el plugin para mantenimiento.

@@ -277,3 +277,21 @@ Decision: el bonus inicial se ejecuta exclusivamente desde una accion manual del
 En esta fase se procesan solo usuarios WordPress con rol `customer`. Cada cliente recibe 10.000 puntos mediante la operacion atomica de saldo y una transaccion `initial_bonus` con clave `initial_bonus:{customer_id}:10000`. La clave unica y la comprobacion dentro del bloqueo de saldo hacen segura la repeticion y permiten clasificar cada resultado como bonificado, omitido o error.
 
 El resumen se guarda temporalmente por administrador y muestra procesados, bonificados, omitidos y errores tras la redireccion. El criterio de clientes puede cambiar en una fase posterior; no incluye invitados ni otros roles.
+
+## TD-024 - Reversion Total Por Cancelacion O Reembolso Completo
+
+Decision: `woocommerce_order_status_cancelled` y `woocommerce_order_fully_refunded` revierten todos los puntos de la transaccion `earned` del pedido. Ambos casos generan una transaccion `cancelled` con clave `cancelled_order:{order_id}`; el segundo hook corresponde exclusivamente a reembolso total y aporta tambien `refund_id` a la metadata.
+
+La transaccion `earned` es la fuente de verdad para el importe. El metadato `_lcter_wcpl_points_awarded` no autoriza por si solo una reversion. La operacion bloquea el saldo, registra `balance_before` y `balance_after` y no permite saldo negativo.
+
+Si el cliente ya no conserva saldo suficiente, no se descuenta parcialmente: el pedido queda con `_lcter_wcpl_points_cancellation_status=processing_error`, detalle interno y nota operativa. La repeticion del hook es segura y una reversion completada se reconoce por clave y por `order_id + type`.
+
+`total_earned` se mantiene como acumulado historico bruto y no se reduce; `total_redeemed` tampoco cambia. El neto se obtiene del historial incluyendo movimientos `cancelled`. Reembolsos parciales, restauracion de regalos canjeados y reapertura posterior del pedido quedan fuera de esta decision.
+
+## TD-025 - Recuperacion Manual De Errores De Pedido
+
+Decision: la edicion administrativa del pedido muestra una seccion de incidencias cuando el canje o la reversion de puntos tienen estado `processing_error`. Los canjes `rejected` tambien se muestran para diagnostico, pero no son reintentables porque sus lineas de regalo ya fueron retiradas.
+
+Cada incidencia muestra tipo, mensaje, puntos, fecha y accion recomendada. Los reintentos exigen `manage_woocommerce`, nonce ligado a pedido y operacion y una comprobacion final de que el estado sigue siendo recuperable.
+
+El reintento de canje vuelve a ejecutar `WooCommerce_Checkout_Adapter::process_paid_order()`: `redeemed_order:{order_id}` evita otro descuento y las claves de `order_rewards` completan solo filas ausentes. El reintento de cancelacion usa `WooCommerce_Orders_Adapter::retry_order_reversal()` y conserva `cancelled_order:{order_id}`. No se introducen operaciones alternativas sobre saldo ni nuevas reglas de negocio.

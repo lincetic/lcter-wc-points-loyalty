@@ -43,6 +43,41 @@ final class PointsServiceTest extends TestCase {
 		self::assertSame( 1000, $transactions->rows[0]['balance_before'] );
 		self::assertSame( 600, $transactions->rows[0]['balance_after'] );
 	}
+
+	public function test_cancelled_order_reversal_is_atomic_and_idempotent(): void {
+		$balances     = new In_Memory_Customer_Points_Repository( 1000 );
+		$transactions = new In_Memory_Transactions_Repository();
+		$service      = new Points_Service( $balances, $transactions, new In_Memory_Transaction_Manager() );
+
+		$result = $service->reverse_order_earned_points( 7, 400, 101, 'Cancelled.' );
+		self::assertSame( Points_Service::RESULT_ADDED, $result );
+		self::assertSame( 600, $service->get_balance( 7 ) );
+		self::assertSame( 'cancelled', $transactions->rows[0]['type'] );
+		self::assertSame( -400, $transactions->rows[0]['points'] );
+		self::assertSame( 1000, $transactions->rows[0]['balance_before'] );
+		self::assertSame( 600, $transactions->rows[0]['balance_after'] );
+		self::assertSame( 'cancelled_order:101', $transactions->rows[0]['idempotency_key'] );
+
+		self::assertSame(
+			Points_Service::RESULT_DUPLICATE,
+			$service->reverse_order_earned_points( 7, 400, 101, 'Cancelled again.' )
+		);
+		self::assertSame( 600, $service->get_balance( 7 ) );
+		self::assertCount( 1, $transactions->rows );
+	}
+
+	public function test_cancelled_order_reversal_fails_without_negative_balance(): void {
+		$balances     = new In_Memory_Customer_Points_Repository( 399 );
+		$transactions = new In_Memory_Transactions_Repository();
+		$service      = new Points_Service( $balances, $transactions, new In_Memory_Transaction_Manager() );
+
+		self::assertSame(
+			Points_Service::RESULT_INSUFFICIENT_BALANCE,
+			$service->reverse_order_earned_points( 7, 400, 102, 'Cancelled.' )
+		);
+		self::assertSame( 399, $service->get_balance( 7 ) );
+		self::assertCount( 0, $transactions->rows );
+	}
 }
 
 final class In_Memory_Customer_Points_Repository extends Customer_Points_Repository {
@@ -66,6 +101,15 @@ final class In_Memory_Customer_Points_Repository extends Customer_Points_Reposit
 	}
 
 	public function redeem( int $customer_id, int $points ): bool {
+		if ( $this->balance < $points ) {
+			return false;
+		}
+
+		$this->balance -= $points;
+		return true;
+	}
+
+	public function reverse_earned( int $customer_id, int $points ): bool {
 		if ( $this->balance < $points ) {
 			return false;
 		}

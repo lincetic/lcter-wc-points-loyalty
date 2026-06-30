@@ -226,6 +226,8 @@ Configuracion inicial disponible:
 * `phpcs.xml.dist`: reglas WordPress, WordPress-Extra y WordPress-Docs.
 * `tests/Unit/PointsServiceTest.php`: saldo negativo, saldos anterior/posterior e idempotencia de `earned_order` y `redeemed_order`.
 * `tests/Unit/InitialBonusServiceTest.php`: importe, tipo, clave idempotente y resumen de ejecuciones repetidas.
+* `tests/Unit/OrderCancellationServiceTest.php`: deteccion de acumulacion, reversion total y error por saldo insuficiente.
+* `tests/Unit/PointsServiceTest.php`: tambien cubre atomicidad, saldos e idempotencia de `cancelled_order`.
 
 Comandos desde la raiz del plugin:
 
@@ -247,7 +249,7 @@ La suite unitaria cubre servicios aislados. Siguen siendo necesarias pruebas de 
 4. Fallar al insertar una fila de `order_rewards`; reintentar y confirmar que no se descuenta de nuevo y se completa la trazabilidad.
 5. Confirmar que un invitado no acumula ni puede canjear.
 6. Manipular campos en checkout clasico y confirmar revalidacion contra base de datos; un nonce invalido no debe modificar el carrito.
-7. Confirmar que no se registran hooks de bonus, reembolsos, caducidad, REST, webhooks ni Clientify.
+7. Confirmar que no se registran hooks de caducidad, REST, webhooks ni Clientify; el bonus solo dispone de accion administrativa y los reembolsos se limitan al evento total `woocommerce_order_fully_refunded`.
 8. Invocar `Rewards::redeem_reward_for_order()` y `WooCommerce_Rewards_Adapter::redeem_reward_for_order()`; ambos deben emitir aviso deprecado, devolver `false` y no cambiar saldo, lineas ni `order_rewards`.
 9. Crear un pedido impagado con reward y confirmar `_lcter_wcpl_reward_state=reward_selected` en pedido e item, `REGALO: PENDIENTE DE PAGO` y el aviso administrativo de no preparacion.
 10. Completar el pago y confirmar que, solo tras transaccion y trazabilidad correctas, pedido e item cambian a `reward_redeemed` y `REGALO: CANJEADO`.
@@ -265,6 +267,30 @@ La suite unitaria cubre servicios aislados. Siguen siendo necesarias pruebas de 
 8. Forzar un fallo de persistencia y confirmar que se contabiliza como error sin dejar saldo sin transaccion.
 9. Confirmar que el resumen muestra procesados = bonificados + omitidos + errores.
 10. Confirmar que activacion, cron y frontend no ejecutan el bonus y que no se envian emails.
+
+## Pruebas Manuales De Cancelacion Y Reembolso Total
+
+1. Pagar un pedido registrado, confirmar su transaccion `earned` y anotar puntos y saldo.
+2. Cambiarlo a `cancelled`; confirmar una transaccion `cancelled` negativa por el mismo importe, clave `cancelled_order:{order_id}` y saldos anterior/posterior correctos.
+3. Repetir el estado o callback y confirmar que no cambia saldo ni crea otra transaccion.
+4. Cancelar un pedido que nunca genero puntos y confirmar que no se crea movimiento `cancelled`.
+5. Repetir con un pedido completamente reembolsado que alcance el estado WooCommerce `refunded`.
+6. Crear un reembolso parcial sin estado total `refunded` y confirmar que esta fase no revierte puntos.
+7. Reducir previamente el saldo por debajo de los puntos ganados, cancelar y confirmar saldo intacto, ausencia de transaccion `cancelled`, estado `processing_error` y nota operativa.
+8. Corregir el saldo y reejecutar el hook; confirmar que la reversion se completa una sola vez.
+9. Verificar `source=woocommerce_order_cancellation`, trigger en metadata y `order_id` correcto.
+10. Confirmar que `total_earned` permanece como historico bruto y `total_redeemed` no cambia.
+
+## Pruebas Manuales De Recuperacion Operativa
+
+1. Provocar `reward_redemption_status=processing_error` y comprobar en la edicion del pedido tipo, mensaje, puntos, fecha, recomendacion y boton de reintento.
+2. Reintentar una interrupcion tras descontar puntos pero antes de completar `order_rewards`; confirmar que no existe segundo descuento y solo se insertan filas ausentes.
+3. Provocar una reversion con saldo insuficiente; comprobar la incidencia y reintentar sin corregir el saldo, confirmando que permanece `processing_error` y sin movimiento parcial.
+4. Corregir el saldo y reintentar; confirmar una sola transaccion `cancelled_order:{order_id}` y desaparicion de la incidencia.
+5. Mostrar un canje `rejected`; confirmar mensaje y recomendacion, pero ausencia de boton porque las lineas fueron retiradas.
+6. Enviar el formulario sin `manage_woocommerce`, con nonce invalido, pedido distinto u operacion manipulada; confirmar que no se ejecuta ningun servicio.
+7. Abrir un error antiguo sin fecha o codigo detallado y confirmar que la seccion usa mensajes de reserva sin salida insegura.
+8. Repetir un formulario ya usado despues de completar la operacion y confirmar que la comprobacion de estado impide otra ejecucion.
 
 ## Requisitos De Compatibilidad A Validar
 

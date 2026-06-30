@@ -19,9 +19,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class Points_Service {
-	const RESULT_ADDED     = 'added';
-	const RESULT_DUPLICATE = 'duplicate';
-	const RESULT_FAILED    = 'failed';
+	const RESULT_ADDED                = 'added';
+	const RESULT_DUPLICATE            = 'duplicate';
+	const RESULT_FAILED               = 'failed';
+	const RESULT_INSUFFICIENT_BALANCE = 'insufficient_balance';
 
 	private Customer_Points_Repository $points;
 	private Transactions_Repository $transactions;
@@ -251,6 +252,83 @@ class Points_Service {
 			null,
 			'earned_order:' . $order_id
 		);
+	}
+
+	/**
+	 * Reverse the points earned by a cancelled or fully refunded order.
+	 *
+	 * @return string One of the RESULT_* constants.
+	 */
+	public function reverse_order_earned_points(
+		int $customer_id,
+		int $points,
+		int $order_id,
+		string $reason,
+		$metadata = null
+	): string {
+		if ( $customer_id <= 0 || $points <= 0 || $order_id <= 0 ) {
+			return self::RESULT_FAILED;
+		}
+
+		if ( ! $this->transaction_manager->begin() ) {
+			return self::RESULT_FAILED;
+		}
+
+		try {
+			$balance_before = $this->points->lock_balance( $customer_id );
+			if ( null === $balance_before ) {
+				throw new \RuntimeException( 'Could not lock the customer balance.' );
+			}
+
+			$idempotency_key = 'cancelled_order:' . $order_id;
+			if (
+				$this->transactions->exists_by_idempotency_key( $idempotency_key ) ||
+				$this->transactions->exists_for_order_and_type( $order_id, Database::TRANSACTION_CANCELLED )
+			) {
+				if ( ! $this->transaction_manager->commit() ) {
+					throw new \RuntimeException( 'Could not commit the cancelled order duplicate check.' );
+				}
+
+				return self::RESULT_DUPLICATE;
+			}
+
+			if ( $balance_before < $points ) {
+				$this->transaction_manager->rollback();
+				return self::RESULT_INSUFFICIENT_BALANCE;
+			}
+
+			$balance_after = $balance_before - $points;
+			if ( $balance_after < 0 || ! $this->points->reverse_earned( $customer_id, $points ) ) {
+				throw new \RuntimeException( 'Could not reverse the earned customer balance.' );
+			}
+
+			if ( ! $this->transactions->insert(
+				array(
+					'customer_id'     => $customer_id,
+					'order_id'        => $order_id,
+					'order_item_id'   => null,
+					'type'            => Database::TRANSACTION_CANCELLED,
+					'points'          => -1 * $points,
+					'balance_before'  => $balance_before,
+					'balance_after'   => $balance_after,
+					'source'          => 'woocommerce_order_cancellation',
+					'description'     => $reason,
+					'metadata'        => $metadata,
+					'idempotency_key' => $idempotency_key,
+				)
+			) ) {
+				throw new \RuntimeException( 'Could not insert the cancelled order transaction.' );
+			}
+
+			if ( ! $this->transaction_manager->commit() ) {
+				throw new \RuntimeException( 'Could not commit the cancelled order transaction.' );
+			}
+
+			return self::RESULT_ADDED;
+		} catch ( \Throwable $exception ) {
+			$this->transaction_manager->rollback();
+			return self::RESULT_FAILED;
+		}
 	}
 
 	public function get_dashboard_totals(): array {

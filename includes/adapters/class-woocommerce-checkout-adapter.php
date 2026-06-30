@@ -22,6 +22,9 @@ class WooCommerce_Checkout_Adapter {
 	const NONCE_NAME   = 'lcter_wcpl_rewards_nonce';
 	const REWARD_STATE_SELECTED = 'reward_selected';
 	const REWARD_STATE_REDEEMED = 'reward_redeemed';
+	const REDEMPTION_STATUS_META   = '_lcter_wcpl_reward_redemption_status';
+	const REDEMPTION_ERROR_META    = '_lcter_wcpl_reward_redemption_error';
+	const REDEMPTION_ERROR_AT_META = '_lcter_wcpl_reward_redemption_error_at';
 
 	private Reward_Redemption_Service $redemption;
 	private Rewards_Service $rewards;
@@ -311,7 +314,9 @@ class WooCommerce_Checkout_Adapter {
 
 		$result = $this->redemption->redeem_paid_order( $customer_id, $order_id, $items );
 		if ( ! $result['success'] ) {
-			$order->update_meta_data( '_lcter_wcpl_reward_redemption_status', 'processing_error' );
+			$order->update_meta_data( self::REDEMPTION_STATUS_META, 'processing_error' );
+			$order->update_meta_data( self::REDEMPTION_ERROR_META, sanitize_key( (string) $result['error'] ) );
+			$order->update_meta_data( self::REDEMPTION_ERROR_AT_META, current_time( 'mysql' ) );
 			$order->add_order_note( __( 'El canje de regalos no pudo completarse y debe reintentarse antes de preparar el pedido.', LCTER_WCPL_TEXT_DOMAIN ) );
 			$order->save();
 			return;
@@ -336,7 +341,9 @@ class WooCommerce_Checkout_Adapter {
 
 		$order->update_meta_data( '_lcter_wcpl_order_rewards', $trace );
 		$order->update_meta_data( '_lcter_wcpl_reward_state', self::REWARD_STATE_REDEEMED );
-		$order->update_meta_data( '_lcter_wcpl_reward_redemption_status', 'completed' );
+		$order->update_meta_data( self::REDEMPTION_STATUS_META, 'completed' );
+		$order->delete_meta_data( self::REDEMPTION_ERROR_META );
+		$order->delete_meta_data( self::REDEMPTION_ERROR_AT_META );
 		$order->add_order_note( __( 'Canje de puntos registrado correctamente.', LCTER_WCPL_TEXT_DOMAIN ) );
 		$order->save();
 	}
@@ -474,7 +481,9 @@ class WooCommerce_Checkout_Adapter {
 			}
 		}
 
-		$order->update_meta_data( '_lcter_wcpl_reward_redemption_status', 'rejected' );
+		$order->update_meta_data( self::REDEMPTION_STATUS_META, 'rejected' );
+		$order->update_meta_data( self::REDEMPTION_ERROR_META, $message );
+		$order->update_meta_data( self::REDEMPTION_ERROR_AT_META, current_time( 'mysql' ) );
 		$order->delete_meta_data( '_lcter_wcpl_reward_state' );
 		$order->add_order_note( $message );
 		$order->calculate_totals();

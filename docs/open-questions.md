@@ -8,7 +8,7 @@ Este documento recoge aspectos no definidos en `AGENTS.md`, `docs/business-rules
 2. Resuelta: se usa la clave unica `initial_bonus:{customer_id}:10000` dentro de la operacion atomica de saldo.
 3. Resuelta para esta fase: solo usuarios WordPress con rol `customer`.
 4. ¿Los puntos caducan realmente o la opción de expiración queda fuera del alcance actual?
-5. ¿Qué debe pasar con los puntos si un pedido pagado se cancela o se reembolsa?
+5. Resuelta para cancelacion y reembolso total: se revierten todos los puntos `earned` mediante una transaccion `cancelled` idempotente. Los parciales siguen pendientes.
 6. ¿Qué debe pasar con los regalos si el pedido se cancela o se reembolsa?
 7. ¿El catálogo trimestral de regalos se cambia manualmente o debe existir automatización por fechas?
 8. ¿Debe mostrarse al cliente el coste en puntos calculado desde el precio del producto o debe guardarse manualmente?
@@ -16,6 +16,8 @@ Este documento recoge aspectos no definidos en `AGENTS.md`, `docs/business-rules
 10. ¿Las variaciones deben poder configurarse como rewards independientes o solo el producto principal?
 
 11. ¿Debe ampliarse en el futuro el bonus a otros roles, clientes invitados vinculados posteriormente o usuarios que hayan comprado sin conservar el rol `customer`?
+12. ¿Como deben calcularse los puntos a revertir en un reembolso parcial: por importe reembolsado, por lineas, impuestos, cupones y portes?
+13. ¿Que debe ocurrir si un pedido revertido vuelve posteriormente a `processing` o `completed`?
 
 ## Checkout Y Experiencia De Cliente
 
@@ -23,7 +25,7 @@ Este documento recoge aspectos no definidos en `AGENTS.md`, `docs/business-rules
 2. ¿Debe reservarse saldo entre la creación y el pago para métodos diferidos, o basta con revalidar y retirar el regalo si el saldo deja de ser suficiente?
 3. ¿Qué política definitiva debe aplicarse si el coste o la disponibilidad de un reward cambia entre checkout y pago?
 4. ¿Cuándo debe añadirse compatibilidad con WooCommerce Checkout Blocks y Store API?
-5. ¿Debe existir una acción administrativa o tarea automática para reintentar canjes con estado `processing_error`?
+5. Resuelta parcialmente: existe una accion manual segura dentro del pedido para reintentar `processing_error`; no existe tarea automatica.
 
 ## Administración
 
@@ -32,6 +34,7 @@ Este documento recoge aspectos no definidos en `AGENTS.md`, `docs/business-rules
 3. ¿Debe existir una pantalla para ver regalos canjeados por pedido o por cliente?
 4. ¿Quién puede hacer ajustes manuales de puntos?
 5. ¿Debe existir exportación CSV?
+6. ¿Debe añadirse un listado global de pedidos con incidencias y acciones por lotes, o basta con la recuperacion dentro de cada pedido?
 
 ## Hallazgos De Estabilizacion
 
@@ -60,4 +63,4 @@ Decisiones iniciales ya tomadas: PHPStan comienza en nivel 5; PHPCS aplica `Word
 5. ¿Qué conjunto exacto de reglas de WP Coding Standards se aplicará?
 6. ¿Cuándo y mediante qué proceso se retirarán las columnas o tablas legacy conservadas por las migraciones no destructivas?
 7. ¿Debe verificarse o convertirse explícitamente a InnoDB una instalación existente que use un motor sin transacciones?
-8. ¿Cómo deben afectar `refund` y `manual_adjustment` a los acumulados `total_earned` y `total_redeemed`?
+8. Resuelta solo para `cancelled`: no modifica `total_earned` ni `total_redeemed`, que permanecen como acumulados historicos brutos. `refund` y `manual_adjustment` siguen pendientes.

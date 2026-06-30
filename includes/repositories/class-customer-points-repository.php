@@ -91,6 +91,24 @@ class Customer_Points_Repository {
 		return false !== $result && 1 === $wpdb->rows_affected;
 	}
 
+	/**
+	 * Subtract previously earned points without counting them as redeemed.
+	 */
+	public function reverse_earned( int $customer_id, int $points ): bool {
+		global $wpdb;
+
+		$result = $wpdb->query(
+			$wpdb->prepare(
+				'UPDATE ' . $this->table_name() . ' SET balance = balance - %d, updated_at = NOW() WHERE customer_id = %d AND balance >= %d',
+				$points,
+				$customer_id,
+				$points
+			)
+		);
+
+		return false !== $result && 1 === $wpdb->rows_affected;
+	}
+
 	public function count_customers(): int {
 		global $wpdb;
 
