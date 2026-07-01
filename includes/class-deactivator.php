@@ -23,6 +23,7 @@ class Deactivator {
 	 * Run deactivation tasks.
 	 */
 	public static function deactivate(): void {
+
 		// No scheduled task or rewrite rule is registered by the plugin.
 	}
 }

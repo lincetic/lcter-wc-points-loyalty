@@ -132,7 +132,11 @@ class Reward_Redemption_Service {
 	 */
 	public function redeem_paid_order( int $customer_id, int $order_id, array $items ): array {
 		if ( $customer_id <= 0 || $order_id <= 0 || empty( $items ) ) {
-			return array( 'success' => false, 'error' => 'invalid_order', 'record_ids' => array() );
+			return array(
+				'success'    => false,
+				'error'      => 'invalid_order',
+				'record_ids' => array(),
+			);
 		}
 
 		$total_points = 0;
@@ -142,11 +146,19 @@ class Reward_Redemption_Service {
 			$cost_total = isset( $item['points_cost_total'] ) ? (int) $item['points_cost_total'] : 0;
 
 			if ( $quantity <= 0 || $cost_each <= 0 || $cost_total !== $quantity * $cost_each ) {
-				return array( 'success' => false, 'error' => 'invalid_items', 'record_ids' => array() );
+				return array(
+					'success'    => false,
+					'error'      => 'invalid_items',
+					'record_ids' => array(),
+				);
 			}
 
 			if ( $cost_total > PHP_INT_MAX - $total_points ) {
-				return array( 'success' => false, 'error' => 'invalid_items', 'record_ids' => array() );
+				return array(
+					'success'    => false,
+					'error'      => 'invalid_items',
+					'record_ids' => array(),
+				);
 			}
 
 			$total_points += $cost_total;
@@ -163,7 +175,11 @@ class Reward_Redemption_Service {
 		);
 
 		if ( ! $redeemed ) {
-			return array( 'success' => false, 'error' => 'points_not_redeemed', 'record_ids' => array() );
+			return array(
+				'success'    => false,
+				'error'      => 'points_not_redeemed',
+				'record_ids' => array(),
+			);
 		}
 
 		$record_ids = array();
@@ -181,13 +197,21 @@ class Reward_Redemption_Service {
 			);
 
 			if ( $record_id <= 0 ) {
-				return array( 'success' => false, 'error' => 'reward_not_recorded', 'record_ids' => $record_ids );
+				return array(
+					'success'    => false,
+					'error'      => 'reward_not_recorded',
+					'record_ids' => $record_ids,
+				);
 			}
 
 			$record_ids[ $reward_id ] = $record_id;
 		}
 
-		return array( 'success' => true, 'error' => '', 'record_ids' => $record_ids );
+		return array(
+			'success'    => true,
+			'error'      => '',
+			'record_ids' => $record_ids,
+		);
 	}
 
 	private function invalid_result( string $error, int $balance = 0 ): array {

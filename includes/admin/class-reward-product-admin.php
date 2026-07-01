@@ -85,7 +85,10 @@ class Reward_Product_Admin {
 						'type'              => 'number',
 						'value'             => $reward ? (int) $reward['points_cost'] : '',
 						'wrapper_class'     => 'lcter-wcpl-reward-field',
-						'custom_attributes' => array( 'step' => '1', 'min' => '1' ),
+						'custom_attributes' => array(
+							'step' => '1',
+							'min'  => '1',
+						),
 					)
 				);
 				woocommerce_wp_checkbox(

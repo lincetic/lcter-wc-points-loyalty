@@ -72,7 +72,7 @@ class Database {
 
 		$charset_collate = $wpdb->get_charset_collate();
 
-		$customer_points_sql = 'CREATE TABLE ' . self::get_table_name( self::TABLE_SUFFIX_CUSTOMER_POINTS ) . " (
+		$customer_points_sql = 'CREATE TABLE ' . self::get_table_name( self::TABLE_SUFFIX_CUSTOMER_POINTS ) . ' (
 			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
 			customer_id BIGINT(20) UNSIGNED NOT NULL,
 			balance INT(11) NOT NULL DEFAULT 0,
@@ -83,9 +83,9 @@ class Database {
 			PRIMARY KEY  (id),
 			UNIQUE KEY customer_id (customer_id),
 			KEY updated_at (updated_at)
-		) ENGINE=InnoDB " . $charset_collate . ';';
+		) ENGINE=InnoDB ' . $charset_collate . ';';
 
-		$transactions_sql = 'CREATE TABLE ' . self::get_table_name( self::TABLE_SUFFIX_TRANSACTIONS ) . " (
+		$transactions_sql = 'CREATE TABLE ' . self::get_table_name( self::TABLE_SUFFIX_TRANSACTIONS ) . ' (
 			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
 			customer_id BIGINT(20) UNSIGNED NOT NULL,
 			order_id BIGINT(20) UNSIGNED NULL,
@@ -108,9 +108,9 @@ class Database {
 			KEY type (type),
 			KEY source (source),
 			KEY created_at (created_at)
-		) ENGINE=InnoDB " . $charset_collate . ';';
+		) ENGINE=InnoDB ' . $charset_collate . ';';
 
-		$rewards_sql = 'CREATE TABLE ' . self::get_table_name( self::TABLE_SUFFIX_REWARDS ) . " (
+		$rewards_sql = 'CREATE TABLE ' . self::get_table_name( self::TABLE_SUFFIX_REWARDS ) . ' (
 			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
 			product_id BIGINT(20) UNSIGNED NOT NULL,
 			points_cost INT(11) NOT NULL,
@@ -126,9 +126,9 @@ class Database {
 			KEY starts_at (starts_at),
 			KEY ends_at (ends_at),
 			KEY sort_order (sort_order)
-		) ENGINE=InnoDB " . $charset_collate . ';';
+		) ENGINE=InnoDB ' . $charset_collate . ';';
 
-		$order_rewards_sql = 'CREATE TABLE ' . self::get_table_name( self::TABLE_SUFFIX_ORDER_REWARDS ) . " (
+		$order_rewards_sql = 'CREATE TABLE ' . self::get_table_name( self::TABLE_SUFFIX_ORDER_REWARDS ) . ' (
 			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
 			order_id BIGINT(20) UNSIGNED NOT NULL,
 			customer_id BIGINT(20) UNSIGNED NOT NULL,
@@ -150,7 +150,7 @@ class Database {
 			KEY order_item_id (order_item_id),
 			KEY reward_id (reward_id),
 			KEY created_at (created_at)
-		) ENGINE=InnoDB " . $charset_collate . ';';
+		) ENGINE=InnoDB ' . $charset_collate . ';';
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $customer_points_sql );

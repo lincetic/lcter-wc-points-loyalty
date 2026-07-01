@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class WooCommerce {
-	private static ?WooCommerce_Orders_Adapter $orders_adapter = null;
+	private static ?WooCommerce_Orders_Adapter $orders_adapter     = null;
 	private static ?WooCommerce_Checkout_Adapter $checkout_adapter = null;
 
 	public static function init(): void {

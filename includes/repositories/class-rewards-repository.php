@@ -82,7 +82,7 @@ class Rewards_Repository {
 			return 0;
 		}
 
-		$data = array(
+		$data    = array(
 			'product_id'  => $product_id,
 			'points_cost' => $points_cost,
 			'active'      => empty( $reward['active'] ) ? 0 : 1,

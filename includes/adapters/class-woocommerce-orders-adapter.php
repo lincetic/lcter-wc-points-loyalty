@@ -17,14 +17,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class WooCommerce_Orders_Adapter {
-	const ORDER_POINTS_AWARDED_META             = '_lcter_wcpl_points_awarded';
-	const ORDER_POINTS_CANCELLATION_STATUS_META = '_lcter_wcpl_points_cancellation_status';
-	const ORDER_POINTS_CANCELLATION_ERROR_META  = '_lcter_wcpl_points_cancellation_error';
+	const ORDER_POINTS_AWARDED_META               = '_lcter_wcpl_points_awarded';
+	const ORDER_POINTS_CANCELLATION_STATUS_META   = '_lcter_wcpl_points_cancellation_status';
+	const ORDER_POINTS_CANCELLATION_ERROR_META    = '_lcter_wcpl_points_cancellation_error';
 	const ORDER_POINTS_CANCELLATION_ERROR_AT_META = '_lcter_wcpl_points_cancellation_error_at';
 	const ORDER_POINTS_CANCELLATION_PENDING_META  = '_lcter_wcpl_points_cancellation_pending';
 	const ORDER_POINTS_CANCELLATION_TRIGGER_META  = '_lcter_wcpl_points_cancellation_trigger';
 	const ORDER_POINTS_CANCELLATION_CONTEXT_META  = '_lcter_wcpl_points_cancellation_context';
-	const POINTS_PER_CURRENCY_UNIT              = 100;
+	const POINTS_PER_CURRENCY_UNIT                = 100;
 
 	private Points_Service $points_service;
 	private Order_Cancellation_Service $cancellation_service;
@@ -109,9 +109,9 @@ class WooCommerce_Orders_Adapter {
 			return;
 		}
 
-		$trigger = sanitize_key( (string) $order->get_meta( self::ORDER_POINTS_CANCELLATION_TRIGGER_META ) );
-		$context = $order->get_meta( self::ORDER_POINTS_CANCELLATION_CONTEXT_META );
-		$context = is_array( $context ) ? $context : array();
+		$trigger                 = sanitize_key( (string) $order->get_meta( self::ORDER_POINTS_CANCELLATION_TRIGGER_META ) );
+		$context                 = $order->get_meta( self::ORDER_POINTS_CANCELLATION_CONTEXT_META );
+		$context                 = is_array( $context ) ? $context : array();
 		$context['manual_retry'] = true;
 
 		$this->process_order_reversal( $order_id, $trigger ?: 'manual_retry', $context );

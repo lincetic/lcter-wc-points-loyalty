@@ -55,14 +55,14 @@ class Order_Traceability_Admin {
 			return;
 		}
 
-		$traceability = new Reward_Traceability_Service();
-		$rewards      = $traceability->get_rewards_by_order( $order_id );
-		$total_points = array_sum( array_column( $rewards, 'points_cost_total' ) );
-		$reward_state = sanitize_key( (string) $order->get_meta( '_lcter_wcpl_reward_state' ) );
+		$traceability      = new Reward_Traceability_Service();
+		$rewards           = $traceability->get_rewards_by_order( $order_id );
+		$total_points      = array_sum( array_column( $rewards, 'points_cost_total' ) );
+		$reward_state      = sanitize_key( (string) $order->get_meta( '_lcter_wcpl_reward_state' ) );
 		$redemption_status = sanitize_key( (string) $order->get_meta( '_lcter_wcpl_reward_redemption_status' ) );
-		$is_selected  = WooCommerce_Checkout_Adapter::REWARD_STATE_SELECTED === $reward_state ||
+		$is_selected       = WooCommerce_Checkout_Adapter::REWARD_STATE_SELECTED === $reward_state ||
 			( '' === $reward_state && in_array( $redemption_status, array( 'pending_payment', 'processing_error' ), true ) );
-		$is_redeemed  = WooCommerce_Checkout_Adapter::REWARD_STATE_REDEEMED === $reward_state;
+		$is_redeemed       = WooCommerce_Checkout_Adapter::REWARD_STATE_REDEEMED === $reward_state;
 		?>
 		<div class="lcter-wcpl-order-rewards">
 			<?php if ( $is_selected ) : ?>

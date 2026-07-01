@@ -70,18 +70,18 @@ class Reward_Traceability_Service {
 
 	private function normalize_reward( array $reward ): array {
 		return array(
-			'order_reward_id'  => isset( $reward['id'] ) ? (int) $reward['id'] : 0,
-			'order_id'         => isset( $reward['order_id'] ) ? (int) $reward['order_id'] : 0,
-			'customer_id'      => isset( $reward['customer_id'] ) ? (int) $reward['customer_id'] : 0,
-			'product_id'       => isset( $reward['product_id'] ) ? (int) $reward['product_id'] : 0,
-			'order_item_id'    => isset( $reward['order_item_id'] ) ? (int) $reward['order_item_id'] : 0,
-			'reward_id'        => isset( $reward['reward_id'] ) ? (int) $reward['reward_id'] : 0,
-			'quantity'         => isset( $reward['quantity'] ) ? (int) $reward['quantity'] : 0,
-			'points_cost_each' => isset( $reward['points_cost_each'] ) ? (int) $reward['points_cost_each'] : 0,
+			'order_reward_id'   => isset( $reward['id'] ) ? (int) $reward['id'] : 0,
+			'order_id'          => isset( $reward['order_id'] ) ? (int) $reward['order_id'] : 0,
+			'customer_id'       => isset( $reward['customer_id'] ) ? (int) $reward['customer_id'] : 0,
+			'product_id'        => isset( $reward['product_id'] ) ? (int) $reward['product_id'] : 0,
+			'order_item_id'     => isset( $reward['order_item_id'] ) ? (int) $reward['order_item_id'] : 0,
+			'reward_id'         => isset( $reward['reward_id'] ) ? (int) $reward['reward_id'] : 0,
+			'quantity'          => isset( $reward['quantity'] ) ? (int) $reward['quantity'] : 0,
+			'points_cost_each'  => isset( $reward['points_cost_each'] ) ? (int) $reward['points_cost_each'] : 0,
 			'points_cost_total' => isset( $reward['points_cost_total'] ) ? (int) $reward['points_cost_total'] : 0,
-			'product_name'     => isset( $reward['product_name'] ) ? (string) $reward['product_name'] : '',
-			'sku'              => isset( $reward['sku'] ) ? (string) $reward['sku'] : '',
-			'created_at'       => isset( $reward['created_at'] ) ? (string) $reward['created_at'] : '',
+			'product_name'      => isset( $reward['product_name'] ) ? (string) $reward['product_name'] : '',
+			'sku'               => isset( $reward['sku'] ) ? (string) $reward['sku'] : '',
+			'created_at'        => isset( $reward['created_at'] ) ? (string) $reward['created_at'] : '',
 		);
 	}
 }

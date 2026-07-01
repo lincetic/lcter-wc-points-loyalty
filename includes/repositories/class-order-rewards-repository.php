@@ -19,12 +19,12 @@ class Order_Rewards_Repository {
 	public function insert( array $order_reward ): int {
 		global $wpdb;
 
-		$order_id    = isset( $order_reward['order_id'] ) ? absint( $order_reward['order_id'] ) : 0;
-		$customer_id = isset( $order_reward['customer_id'] ) ? absint( $order_reward['customer_id'] ) : 0;
-		$product_id  = isset( $order_reward['product_id'] ) ? absint( $order_reward['product_id'] ) : 0;
-		$quantity    = max( 1, isset( $order_reward['quantity'] ) ? absint( $order_reward['quantity'] ) : 1 );
-		$cost_each   = isset( $order_reward['points_cost_each'] ) ? absint( $order_reward['points_cost_each'] ) : 0;
-		$cost_total  = isset( $order_reward['points_cost_total'] ) ? absint( $order_reward['points_cost_total'] ) : $cost_each * $quantity;
+		$order_id        = isset( $order_reward['order_id'] ) ? absint( $order_reward['order_id'] ) : 0;
+		$customer_id     = isset( $order_reward['customer_id'] ) ? absint( $order_reward['customer_id'] ) : 0;
+		$product_id      = isset( $order_reward['product_id'] ) ? absint( $order_reward['product_id'] ) : 0;
+		$quantity        = max( 1, isset( $order_reward['quantity'] ) ? absint( $order_reward['quantity'] ) : 1 );
+		$cost_each       = isset( $order_reward['points_cost_each'] ) ? absint( $order_reward['points_cost_each'] ) : 0;
+		$cost_total      = isset( $order_reward['points_cost_total'] ) ? absint( $order_reward['points_cost_total'] ) : $cost_each * $quantity;
 		$idempotency_key = isset( $order_reward['idempotency_key'] ) ? sanitize_text_field( (string) $order_reward['idempotency_key'] ) : null;
 
 		if ( $order_id <= 0 || $customer_id <= 0 || $product_id <= 0 || $cost_each <= 0 || $cost_total <= 0 ) {

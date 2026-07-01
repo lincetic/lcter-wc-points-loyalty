@@ -18,10 +18,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class WooCommerce_Checkout_Adapter {
-	const NONCE_ACTION = 'lcter_wcpl_checkout_rewards';
-	const NONCE_NAME   = 'lcter_wcpl_rewards_nonce';
-	const REWARD_STATE_SELECTED = 'reward_selected';
-	const REWARD_STATE_REDEEMED = 'reward_redeemed';
+	const NONCE_ACTION             = 'lcter_wcpl_checkout_rewards';
+	const NONCE_NAME               = 'lcter_wcpl_rewards_nonce';
+	const REWARD_STATE_SELECTED    = 'reward_selected';
+	const REWARD_STATE_REDEEMED    = 'reward_redeemed';
 	const REDEMPTION_STATUS_META   = '_lcter_wcpl_reward_redemption_status';
 	const REDEMPTION_ERROR_META    = '_lcter_wcpl_reward_redemption_error';
 	const REDEMPTION_ERROR_AT_META = '_lcter_wcpl_reward_redemption_error_at';
@@ -111,10 +111,10 @@ class WooCommerce_Checkout_Adapter {
 								continue;
 							}
 
-							$reward_id   = (int) $reward['id'];
-							$points_cost = (int) $reward['points_cost'];
+							$reward_id    = (int) $reward['id'];
+							$points_cost  = (int) $reward['points_cost'];
 							$max_quantity = $points_cost > 0 ? intdiv( $balance, $points_cost ) : 0;
-							$quantity = $posted_quantities[ $reward_id ] ?? 0;
+							$quantity     = $posted_quantities[ $reward_id ] ?? 0;
 							?>
 							<label class="lcter-wcpl-reward-option">
 								<span><?php echo esc_html( $product->get_name() ); ?></span>
@@ -233,7 +233,12 @@ class WooCommerce_Checkout_Adapter {
 		$item->set_total( 0 );
 		$item->set_subtotal_tax( 0 );
 		$item->set_total_tax( 0 );
-		$item->set_taxes( array( 'subtotal' => array(), 'total' => array() ) );
+		$item->set_taxes(
+			array(
+				'subtotal' => array(),
+				'total'    => array(),
+			)
+		);
 		$item->add_meta_data( 'REGALO', __( 'PENDIENTE DE PAGO', LCTER_WCPL_TEXT_DOMAIN ), true );
 		$item->add_meta_data( '_lcter_wcpl_is_reward', '1', true );
 		$item->add_meta_data( '_lcter_wcpl_reward_state', self::REWARD_STATE_SELECTED, true );
@@ -250,14 +255,14 @@ class WooCommerce_Checkout_Adapter {
 			return;
 		}
 
-		$selection   = array();
+		$selection    = array();
 		$total_points = 0;
 		foreach ( $cart->get_cart() as $cart_item ) {
 			if ( empty( $cart_item['_lcter_wcpl_is_reward'] ) ) {
 				continue;
 			}
 
-			$reward_id = (int) $cart_item['_lcter_wcpl_reward_id'];
+			$reward_id               = (int) $cart_item['_lcter_wcpl_reward_id'];
 			$selection[ $reward_id ] = array(
 				'reward_id'         => $reward_id,
 				'product_id'        => (int) $cart_item['product_id'],
@@ -265,7 +270,7 @@ class WooCommerce_Checkout_Adapter {
 				'points_cost_each'  => (int) $cart_item['_lcter_wcpl_points_cost_each'],
 				'points_cost_total' => (int) $cart_item['_lcter_wcpl_points_cost_total'],
 			);
-			$total_points += (int) $cart_item['_lcter_wcpl_points_cost_total'];
+			$total_points           += (int) $cart_item['_lcter_wcpl_points_cost_total'];
 		}
 
 		if ( empty( $selection ) ) {
@@ -324,7 +329,7 @@ class WooCommerce_Checkout_Adapter {
 
 		$trace = array();
 		foreach ( $items as $reward_id => $reward_item ) {
-			$record_id = (int) ( $result['record_ids'][ $reward_id ] ?? 0 );
+			$record_id  = (int) ( $result['record_ids'][ $reward_id ] ?? 0 );
 			$order_item = $order->get_item( (int) $reward_item['order_item_id'] );
 			if ( $order_item && $record_id > 0 ) {
 				$order_item->update_meta_data( '_lcter_wcpl_order_reward_id', $record_id );
@@ -335,7 +340,10 @@ class WooCommerce_Checkout_Adapter {
 
 			$trace[] = array_merge(
 				$reward_item,
-				array( 'order_reward_id' => $record_id, 'label' => 'REGALO CANJEADO' )
+				array(
+					'order_reward_id' => $record_id,
+					'label'           => 'REGALO CANJEADO',
+				)
 			);
 		}
 
@@ -407,10 +415,10 @@ class WooCommerce_Checkout_Adapter {
 				0,
 				array(),
 				array(
-					'_lcter_wcpl_is_reward'          => '1',
-					'_lcter_wcpl_reward_id'          => (int) $reward_id,
-					'_lcter_wcpl_points_cost_each'   => (int) $item['points_cost_each'],
-					'_lcter_wcpl_points_cost_total'  => (int) $item['points_cost_total'],
+					'_lcter_wcpl_is_reward'         => '1',
+					'_lcter_wcpl_reward_id'         => (int) $reward_id,
+					'_lcter_wcpl_points_cost_each'  => (int) $item['points_cost_each'],
+					'_lcter_wcpl_points_cost_total' => (int) $item['points_cost_total'],
 				)
 			);
 
@@ -437,8 +445,8 @@ class WooCommerce_Checkout_Adapter {
 				continue;
 			}
 
-			$reward_id = (int) $item->get_meta( '_lcter_wcpl_reward_id' );
-			$product   = $item->get_product();
+			$reward_id           = (int) $item->get_meta( '_lcter_wcpl_reward_id' );
+			$product             = $item->get_product();
 			$items[ $reward_id ] = array(
 				'reward_id'         => $reward_id,
 				'product_id'        => (int) $item->get_product_id(),

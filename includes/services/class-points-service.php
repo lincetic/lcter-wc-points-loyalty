@@ -206,16 +206,16 @@ class Points_Service {
 
 			if ( ! $this->transactions->insert(
 				array(
-					'customer_id'    => $customer_id,
-					'order_id'       => $order_id,
-					'order_item_id'  => $order_item_id,
-					'type'           => Database::TRANSACTION_REDEEMED,
-					'points'         => -1 * $points,
-					'balance_before' => $balance_before,
-					'balance_after'  => $balance_after,
-					'source'         => 'woocommerce_reward',
-					'description'    => $description,
-					'metadata'       => $metadata,
+					'customer_id'     => $customer_id,
+					'order_id'        => $order_id,
+					'order_item_id'   => $order_item_id,
+					'type'            => Database::TRANSACTION_REDEEMED,
+					'points'          => -1 * $points,
+					'balance_before'  => $balance_before,
+					'balance_after'   => $balance_after,
+					'source'          => 'woocommerce_reward',
+					'description'     => $description,
+					'metadata'        => $metadata,
 					'idempotency_key' => $idempotency_key,
 				)
 			) ) {

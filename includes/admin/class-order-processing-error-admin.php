@@ -99,12 +99,12 @@ class Order_Processing_Error_Admin {
 			wp_die( esc_html__( 'No tienes permiso para reintentar esta operación.', LCTER_WCPL_TEXT_DOMAIN ) );
 		}
 
-		$order_value = isset( $_POST['order_id'] ) ? wp_unslash( $_POST['order_id'] ) : null;
+		$order_value     = isset( $_POST['order_id'] ) ? wp_unslash( $_POST['order_id'] ) : null;
 		$operation_value = isset( $_POST['operation'] ) ? wp_unslash( $_POST['operation'] ) : null;
-		$nonce_value = isset( $_POST[ self::NONCE_NAME ] ) ? wp_unslash( $_POST[ self::NONCE_NAME ] ) : null;
-		$order_id   = is_scalar( $order_value ) ? absint( $order_value ) : 0;
-		$operation  = is_scalar( $operation_value ) ? sanitize_key( (string) $operation_value ) : '';
-		$nonce      = is_scalar( $nonce_value ) ? sanitize_text_field( (string) $nonce_value ) : '';
+		$nonce_value     = isset( $_POST[ self::NONCE_NAME ] ) ? wp_unslash( $_POST[ self::NONCE_NAME ] ) : null;
+		$order_id        = is_scalar( $order_value ) ? absint( $order_value ) : 0;
+		$operation       = is_scalar( $operation_value ) ? sanitize_key( (string) $operation_value ) : '';
+		$nonce           = is_scalar( $nonce_value ) ? sanitize_text_field( (string) $nonce_value ) : '';
 
 		if ( $order_id <= 0 || ! in_array( $operation, array( 'reward_redemption', 'points_cancellation' ), true ) ) {
 			wp_die( esc_html__( 'La operación de reintento no es válida.', LCTER_WCPL_TEXT_DOMAIN ) );

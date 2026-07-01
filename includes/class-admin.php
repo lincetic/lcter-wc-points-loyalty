@@ -66,7 +66,7 @@ class Admin {
 			'lcter_wcpl_enable_notifications',
 			array(
 				'type'              => 'boolean',
-				'sanitize_callback' => function( $value ) {
+				'sanitize_callback' => function ( $value ) {
 					return '1' === $value ? '1' : '0';
 				},
 				'default'           => '1',
@@ -78,7 +78,7 @@ class Admin {
 			'lcter_wcpl_remove_data_on_uninstall',
 			array(
 				'type'              => 'boolean',
-				'sanitize_callback' => function( $value ) {
+				'sanitize_callback' => function ( $value ) {
 					return '1' === $value ? '1' : '0';
 				},
 				'default'           => '0',
@@ -269,5 +269,4 @@ class Admin {
 	public function render_order_rewards( $order ): void {
 		Admin_UI\Order_Traceability_Admin::instance()->render_order_rewards( $order );
 	}
-
 }
