@@ -107,8 +107,8 @@ Reglas: BR-012, BR-014.
 
 Actor: administración con `manage_woocommerce` y permiso para editar el usuario.
 
-1. Administración abre la edición de un usuario con rol `customer` y pulsa “Ajustar puntos”.
-2. En el formulario independiente introduce un entero firmado distinto de cero y un motivo obligatorio.
+1. Administración abre la edición de un usuario con rol `customer`.
+2. En el formulario independiente de puntos introduce un entero firmado distinto de cero, un motivo obligatorio y pulsa “Registrar ajuste”.
 3. El plugin verifica nonce, capacidades, cliente y entradas.
 4. El servicio bloquea el saldo y rechaza la operación si el resultado sería negativo.
 5. En una única transacción atómica actualiza el saldo y crea `type=manual_adjustment` con saldos anterior y posterior, motivo y administrador responsable.

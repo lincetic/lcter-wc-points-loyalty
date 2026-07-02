@@ -309,9 +309,9 @@ Motivo: evitar constantes dispersas y garantizar que bonus, ayuda administrativa
 
 ## TD-027 - Ajuste Manual Atómico Desde El Cliente
 
-Decisión: la edición de usuarios con rol `customer` muestra el saldo y enlaza a un formulario administrativo independiente para introducir el delta firmado y el motivo. La operación requiere `manage_woocommerce`, permiso para editar el usuario y un nonce específico.
+Decisión: la edición de usuarios con rol `customer` muestra el saldo y los controles asociados a un formulario HTML independiente que envía directamente a `admin-post.php`. La operación usa `action=lcter_wcpl_adjust_customer_points` y requiere `manage_woocommerce`, permiso para editar el usuario y un nonce específico.
 
-El formulario independiente evita acoplar el movimiento de saldo al guardado general del perfil: un error de validación del usuario no puede ejecutar o repetir el ajuste.
+El formulario se renderiza fuera del formulario principal de WordPress y sus controles se asocian mediante el atributo `form`. Así no existe HTML anidado ni se acopla el movimiento de saldo al guardado general del perfil. Tras procesar, la acción redirige a `user-edit.php?user_id={id}`.
 
 `Points_Service::adjust_points()` bloquea la fila del cliente y coordina `Customer_Points_Repository::adjust()` con `Transactions_Repository::insert()` dentro de la misma transacción. Registra `type=manual_adjustment`, delta firmado, `balance_before`, `balance_after`, `source=woocommerce_customer_admin`, `description` y `created_by`; no usa SQL en administración ni en el servicio.
 

@@ -17,12 +17,23 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Adds a controlled manual adjustment action to WooCommerce customer editing.
  */
 class Customer_Points_Admin {
-	const ACTION       = 'lcter_wcpl_manual_points_adjustment';
-	const NONCE_ACTION = 'lcter_wcpl_manual_points_adjustment';
-	const PAGE_SLUG    = 'lcter-wcpl-customer-points-adjustment';
+	const ACTION       = 'lcter_wcpl_adjust_customer_points';
+	const FORM_ID      = 'lcter-wcpl-adjust-customer-points-form';
+	const NONCE_ACTION = 'lcter_wcpl_adjust_customer_points';
 
-	/** @var self|null Singleton instance. */
+	/**
+	 * Singleton instance.
+	 *
+	 * @var self|null
+	 */
 	private static $instance = null;
+
+	/**
+	 * Customer ID whose external form must be rendered.
+	 *
+	 * @var int|null
+	 */
+	private ?int $form_user_id = null;
 
 	/**
 	 * Return the singleton instance.
@@ -39,28 +50,16 @@ class Customer_Points_Admin {
 	 * Register customer administration hooks.
 	 */
 	private function __construct() {
-		add_action( 'admin_menu', array( $this, 'register_page' ) );
 		add_action( 'edit_user_profile', array( $this, 'render_customer_panel' ) );
-		add_action( 'admin_post_' . self::ACTION, array( $this, 'handle_action' ) );
+		add_action( 'admin_footer-user-edit.php', array( $this, 'render_adjustment_form' ) );
+		add_action( 'admin_post_lcter_wcpl_adjust_customer_points', array( $this, 'handle_action' ) );
 	}
 
 	/**
-	 * Register a hidden page containing the standalone adjustment form.
-	 */
-	public function register_page(): void {
-		add_submenu_page(
-			'lcter-wcpl-dashboard',
-			__( 'Ajustar puntos del cliente', LCTER_WCPL_TEXT_DOMAIN ),
-			__( 'Ajustar puntos', LCTER_WCPL_TEXT_DOMAIN ),
-			'manage_woocommerce',
-			self::PAGE_SLUG,
-			array( $this, 'render_adjustment_page' )
-		);
-		remove_submenu_page( 'lcter-wcpl-dashboard', self::PAGE_SLUG );
-	}
-
-	/**
-	 * Show the current balance and explicit action link in the customer profile.
+	 * Show the balance and adjustment controls in the customer profile.
+	 *
+	 * The controls belong to the standalone form rendered in the admin footer,
+	 * avoiding a nested form inside WordPress' user edit form.
 	 *
 	 * @param \WP_User $user Edited user.
 	 */
@@ -69,74 +68,61 @@ class Customer_Points_Admin {
 			return;
 		}
 
-		$customer_id = (int) $user->ID;
-		$balance     = ( new Points_Service() )->get_balance( $customer_id );
-		$notice      = get_transient( $this->notice_key( $customer_id ) );
+		$user_id            = (int) $user->ID;
+		$this->form_user_id = $user_id;
+		$balance            = ( new Points_Service() )->get_balance( $user_id );
+		$notice             = get_transient( $this->notice_key( $user_id ) );
+
 		if ( is_array( $notice ) ) {
-			delete_transient( $this->notice_key( $customer_id ) );
+			delete_transient( $this->notice_key( $user_id ) );
 			$notice_class = 'success' === ( $notice['type'] ?? '' ) ? 'notice-success' : 'notice-error';
 			?>
 			<div class="notice <?php echo esc_attr( $notice_class ); ?> inline"><p><?php echo esc_html( (string) ( $notice['message'] ?? '' ) ); ?></p></div>
 			<?php
 		}
-
-		$url = add_query_arg(
-			array(
-				'page'        => self::PAGE_SLUG,
-				'customer_id' => $customer_id,
-			),
-			admin_url( 'admin.php' )
-		);
 		?>
 		<h2><?php esc_html_e( 'Puntos de fidelidad', LCTER_WCPL_TEXT_DOMAIN ); ?></h2>
 		<table class="form-table" role="presentation">
 			<tr>
 				<th scope="row"><?php esc_html_e( 'Saldo actual', LCTER_WCPL_TEXT_DOMAIN ); ?></th>
+				<td><strong><?php echo esc_html( number_format_i18n( $balance ) ); ?></strong></td>
+			</tr>
+			<tr>
+				<th><label for="lcter_wcpl_points_delta"><?php esc_html_e( 'Ajuste manual', LCTER_WCPL_TEXT_DOMAIN ); ?></label></th>
 				<td>
-					<strong><?php echo esc_html( number_format_i18n( $balance ) ); ?></strong>
-					<p><a class="button" href="<?php echo esc_url( $url ); ?>"><?php esc_html_e( 'Ajustar puntos', LCTER_WCPL_TEXT_DOMAIN ); ?></a></p>
+					<input type="number" class="regular-text" step="1" id="lcter_wcpl_points_delta" name="delta" form="<?php echo esc_attr( self::FORM_ID ); ?>" required />
+					<p class="description"><?php esc_html_e( 'Usa un entero positivo para sumar o negativo para restar.', LCTER_WCPL_TEXT_DOMAIN ); ?></p>
 				</td>
+			</tr>
+			<tr>
+				<th><label for="lcter_wcpl_adjustment_reason"><?php esc_html_e( 'Motivo del ajuste', LCTER_WCPL_TEXT_DOMAIN ); ?></label></th>
+				<td>
+					<textarea class="regular-text" rows="3" id="lcter_wcpl_adjustment_reason" name="reason" form="<?php echo esc_attr( self::FORM_ID ); ?>" required></textarea>
+					<p class="description"><?php esc_html_e( 'Obligatorio. Se guardará como descripción de la transacción.', LCTER_WCPL_TEXT_DOMAIN ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th></th>
+				<td><button type="submit" class="button button-secondary" form="<?php echo esc_attr( self::FORM_ID ); ?>"><?php esc_html_e( 'Registrar ajuste', LCTER_WCPL_TEXT_DOMAIN ); ?></button></td>
 			</tr>
 		</table>
 		<?php
 	}
 
 	/**
-	 * Render the standalone, protected adjustment form.
+	 * Render the actual admin-post form outside WordPress' user edit form.
 	 */
-	public function render_adjustment_page(): void {
-		$customer = $this->get_requested_customer_from_query();
-		if ( ! $this->can_adjust_customer( $customer ) ) {
-			wp_die( esc_html__( 'No tienes permiso para ajustar los puntos de este cliente.', LCTER_WCPL_TEXT_DOMAIN ) );
+	public function render_adjustment_form(): void {
+		if ( null === $this->form_user_id ) {
+			return;
 		}
 
-		$customer_id = (int) $customer->ID;
-		$balance     = ( new Points_Service() )->get_balance( $customer_id );
 		?>
-		<div class="wrap">
-			<h1><?php esc_html_e( 'Ajustar puntos del cliente', LCTER_WCPL_TEXT_DOMAIN ); ?></h1>
-			<p><?php echo esc_html( sprintf( __( 'Cliente: %1$s (ID %2$d). Saldo actual: %3$s puntos.', LCTER_WCPL_TEXT_DOMAIN ), $customer->display_name, $customer_id, number_format_i18n( $balance ) ) ); ?></p>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION ); ?>" />
-				<input type="hidden" name="customer_id" value="<?php echo esc_attr( (string) $customer_id ); ?>" />
-				<?php wp_nonce_field( self::NONCE_ACTION ); ?>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th><label for="lcter_wcpl_manual_points_amount"><?php esc_html_e( 'Ajuste manual', LCTER_WCPL_TEXT_DOMAIN ); ?></label></th>
-						<td>
-							<input type="number" class="regular-text" step="1" id="lcter_wcpl_manual_points_amount" name="lcter_wcpl_manual_points_amount" required />
-							<p class="description"><?php esc_html_e( 'Usa un entero positivo para sumar o negativo para restar.', LCTER_WCPL_TEXT_DOMAIN ); ?></p>
-						</td>
-					</tr>
-					<tr>
-						<th><label for="lcter_wcpl_manual_points_description"><?php esc_html_e( 'Motivo del ajuste', LCTER_WCPL_TEXT_DOMAIN ); ?></label></th>
-						<td><textarea class="regular-text" rows="3" id="lcter_wcpl_manual_points_description" name="lcter_wcpl_manual_points_description" required></textarea></td>
-					</tr>
-				</table>
-				<?php submit_button( __( 'Registrar ajuste', LCTER_WCPL_TEXT_DOMAIN ) ); ?>
-				<a href="<?php echo esc_url( get_edit_user_link( $customer_id ) ); ?>"><?php esc_html_e( 'Volver al cliente', LCTER_WCPL_TEXT_DOMAIN ); ?></a>
-			</form>
-		</div>
+		<form id="<?php echo esc_attr( self::FORM_ID ); ?>" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION ); ?>" />
+			<input type="hidden" name="user_id" value="<?php echo esc_attr( (string) $this->form_user_id ); ?>" />
+			<?php wp_nonce_field( self::NONCE_ACTION ); ?>
+		</form>
 		<?php
 	}
 
@@ -144,44 +130,56 @@ class Customer_Points_Admin {
 	 * Validate and execute the standalone adjustment action.
 	 */
 	public function handle_action(): void {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( esc_html__( 'No tienes permiso para ajustar puntos.', LCTER_WCPL_TEXT_DOMAIN ) );
+		}
+
 		check_admin_referer( self::NONCE_ACTION );
 
-		$customer_id = isset( $_POST['customer_id'] ) ? absint( wp_unslash( $_POST['customer_id'] ) ) : 0;
-		$customer    = get_user_by( 'id', $customer_id );
-		if ( ! $this->can_adjust_customer( $customer ) ) {
-			wp_die( esc_html__( 'No tienes permiso para ajustar los puntos de este cliente.', LCTER_WCPL_TEXT_DOMAIN ) );
+		$user_id = isset( $_POST['user_id'] ) ? absint( wp_unslash( $_POST['user_id'] ) ) : 0;
+		$user    = $user_id > 0 ? get_user_by( 'id', $user_id ) : false;
+
+		if ( ! $this->can_adjust_customer( $user ) ) {
+			wp_die( esc_html__( 'El usuario indicado no es un cliente válido o no puedes editarlo.', LCTER_WCPL_TEXT_DOMAIN ) );
 		}
 
-		$adjustment  = $this->get_requested_adjustment();
-		$description = isset( $_POST['lcter_wcpl_manual_points_description'] )
-			? trim( sanitize_textarea_field( wp_unslash( $_POST['lcter_wcpl_manual_points_description'] ) ) )
+		$delta  = $this->get_requested_delta();
+		$reason = isset( $_POST['reason'] )
+			? trim( sanitize_textarea_field( wp_unslash( $_POST['reason'] ) ) )
 			: '';
 
-		if ( null === $adjustment || '' === $description ) {
-			wp_die( esc_html__( 'El ajuste debe ser un entero distinto de cero y el motivo es obligatorio.', LCTER_WCPL_TEXT_DOMAIN ) );
+		if ( null === $delta || '' === $reason ) {
+			$this->set_notice(
+				$user_id,
+				'error',
+				__( 'El ajuste debe ser un entero distinto de cero y el motivo es obligatorio.', LCTER_WCPL_TEXT_DOMAIN )
+			);
+			$this->redirect_to_user( $user_id );
 		}
 
-		$result = ( new Points_Service() )->adjust_points( $customer_id, $adjustment, $description, get_current_user_id() );
+		$result = ( new Points_Service() )->adjust_points( $user_id, $delta, $reason, get_current_user_id() );
+
 		if ( Points_Service::RESULT_ADDED === $result ) {
-			$notice = array(
-				'type'    => 'success',
-				'message' => __( 'El saldo de puntos se ajustó correctamente y la transacción quedó registrada.', LCTER_WCPL_TEXT_DOMAIN ),
+			$this->set_notice(
+				$user_id,
+				'success',
+				__( 'El saldo de puntos se ajustó correctamente y la transacción quedó registrada.', LCTER_WCPL_TEXT_DOMAIN )
 			);
 		} elseif ( Points_Service::RESULT_INSUFFICIENT_BALANCE === $result ) {
-			$notice = array(
-				'type'    => 'error',
-				'message' => __( 'No se aplicó el ajuste porque dejaría el saldo en negativo.', LCTER_WCPL_TEXT_DOMAIN ),
+			$this->set_notice(
+				$user_id,
+				'error',
+				__( 'No se aplicó el ajuste porque dejaría el saldo en negativo.', LCTER_WCPL_TEXT_DOMAIN )
 			);
 		} else {
-			$notice = array(
-				'type'    => 'error',
-				'message' => __( 'No se pudo aplicar el ajuste de puntos.', LCTER_WCPL_TEXT_DOMAIN ),
+			$this->set_notice(
+				$user_id,
+				'error',
+				__( 'No se pudo aplicar el ajuste de puntos.', LCTER_WCPL_TEXT_DOMAIN )
 			);
 		}
 
-		set_transient( $this->notice_key( $customer_id ), $notice, 5 * MINUTE_IN_SECONDS );
-		wp_safe_redirect( get_edit_user_link( $customer_id ) );
-		exit;
+		$this->redirect_to_user( $user_id );
 	}
 
 	/**
@@ -197,38 +195,59 @@ class Customer_Points_Admin {
 	}
 
 	/**
-	 * Resolve the customer from the explicit query parameter.
-	 *
-	 * @return \WP_User|false
+	 * Read a signed, non-zero schema-safe delta from the action request.
 	 */
-	private function get_requested_customer_from_query() {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation; capabilities are checked before output.
-		$customer_id = isset( $_GET['customer_id'] ) ? absint( wp_unslash( $_GET['customer_id'] ) ) : 0;
-
-		return get_user_by( 'id', $customer_id );
-	}
-
-	/**
-	 * Read a signed, non-zero schema-safe integer from the action request.
-	 */
-	private function get_requested_adjustment(): ?int {
-		$value = isset( $_POST['lcter_wcpl_manual_points_amount'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_manual_points_amount'] ) ) ) : '';
+	private function get_requested_delta(): ?int {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- The admin-post handler verifies the nonce before calling this method.
+		$value = isset( $_POST['delta'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['delta'] ) ) ) : '';
 		if ( ! preg_match( '/^-?[0-9]+$/', $value ) ) {
 			return null;
 		}
 
-		$adjustment = (int) $value;
-		if ( 0 === $adjustment || $adjustment < -2147483647 || $adjustment > 2147483647 ) {
+		$delta = (int) $value;
+		if ( 0 === $delta || $delta < -2147483647 || $delta > 2147483647 ) {
 			return null;
 		}
 
-		return $adjustment;
+		return $delta;
+	}
+
+	/**
+	 * Store one administrator-specific notice for the next user edit request.
+	 *
+	 * @param int    $user_id User receiving the balance adjustment.
+	 * @param string $type Notice type.
+	 * @param string $message Notice message.
+	 */
+	private function set_notice( int $user_id, string $type, string $message ): void {
+		set_transient(
+			$this->notice_key( $user_id ),
+			array(
+				'type'    => $type,
+				'message' => $message,
+			),
+			5 * MINUTE_IN_SECONDS
+		);
+	}
+
+	/**
+	 * Redirect back to the canonical WordPress user edit screen.
+	 *
+	 * @param int $user_id User to edit.
+	 */
+	private function redirect_to_user( int $user_id ): never {
+		$url = add_query_arg( 'user_id', $user_id, admin_url( 'user-edit.php' ) );
+
+		wp_safe_redirect( $url );
+		exit;
 	}
 
 	/**
 	 * Return the current administrator/customer notice key.
+	 *
+	 * @param int $user_id Edited customer ID.
 	 */
-	private function notice_key( int $customer_id ): string {
-		return 'lcter_wcpl_manual_adjustment_' . get_current_user_id() . '_' . $customer_id;
+	private function notice_key( int $user_id ): string {
+		return 'lcter_wcpl_manual_adjustment_' . get_current_user_id() . '_' . $user_id;
 	}
 }
