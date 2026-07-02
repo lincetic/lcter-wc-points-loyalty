@@ -5,13 +5,13 @@ Este documento recoge aspectos no definidos en `AGENTS.md`, `docs/business-rules
 ## Producto Y Negocio
 
 1. Resuelta para esta fase: el bonus se ejecuta manualmente desde administracion, con confirmacion, y nunca al activar.
-2. Resuelta: se usa la clave unica `initial_bonus:{customer_id}:10000` dentro de la operacion atomica de saldo.
+2. Resuelta: se usa la clave única estable `initial_bonus:{customer_id}` y una comprobación atómica por cliente y tipo para reconocer también claves legacy con importe.
 3. Resuelta para esta fase: solo usuarios WordPress con rol `customer`.
 4. ¿Los puntos caducan realmente o la opción de expiración queda fuera del alcance actual?
 5. Resuelta para cancelacion y reembolso total: se revierten todos los puntos `earned` mediante una transaccion `cancelled` idempotente. Los parciales siguen pendientes.
 6. ¿Qué debe pasar con los regalos si el pedido se cancela o se reembolsa?
 7. ¿El catálogo trimestral de regalos se cambia manualmente o debe existir automatización por fechas?
-8. ¿Debe mostrarse al cliente el coste en puntos calculado desde el precio del producto o debe guardarse manualmente?
+8. Resuelta para administración: el coste persistido sigue siendo manual; la edición de producto ofrece un botón que copia la sugerencia calculada con el multiplicador vigente. No se recalcula automáticamente ni se expone un cálculo nuevo al cliente.
 9. ¿Deben acumular puntos los pedidos de invitado y, en ese caso, cómo se vinculan posteriormente a un `customer_id` sin duplicar saldo?
 10. ¿Las variaciones deben poder configurarse como rewards independientes o solo el producto principal?
 
@@ -32,7 +32,7 @@ Este documento recoge aspectos no definidos en `AGENTS.md`, `docs/business-rules
 1. ¿Qué pantallas administrativas son necesarias además de la configuración en producto?
 2. ¿Debe existir una pantalla para ver historial de transacciones por cliente?
 3. ¿Debe existir una pantalla para ver regalos canjeados por pedido o por cliente?
-4. ¿Quién puede hacer ajustes manuales de puntos?
+4. Resuelta: solo usuarios con `manage_woocommerce` y permiso para editar el usuario objetivo; el objetivo debe tener rol `customer`.
 5. ¿Debe existir exportación CSV?
 6. ¿Debe añadirse un listado global de pedidos con incidencias y acciones por lotes, o basta con la recuperacion dentro de cada pedido?
 
@@ -63,4 +63,4 @@ Decisiones iniciales ya tomadas: PHPStan comienza en nivel 5; PHPCS aplica `Word
 5. ¿Qué conjunto exacto de reglas de WP Coding Standards se aplicará?
 6. ¿Cuándo y mediante qué proceso se retirarán las columnas o tablas legacy conservadas por las migraciones no destructivas?
 7. ¿Debe verificarse o convertirse explícitamente a InnoDB una instalación existente que use un motor sin transacciones?
-8. Resuelta solo para `cancelled`: no modifica `total_earned` ni `total_redeemed`, que permanecen como acumulados historicos brutos. `refund` y `manual_adjustment` siguen pendientes.
+8. Resuelta para `cancelled` y `manual_adjustment`: no modifican `total_earned` ni `total_redeemed`, que permanecen como acumulados históricos brutos. La semántica de `refund` sigue pendiente.

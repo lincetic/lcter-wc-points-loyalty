@@ -31,7 +31,9 @@ Implementado:
 * Transacciones con `balance_before`, `balance_after` e idempotencia.
 * Trazabilidad de `order_rewards` por pedido y cliente.
 * Visualización de regalos canjeados en administración.
-* Bonus inicial manual de 10.000 puntos para usuarios con rol `customer`.
+* Bonus inicial manual y configurable, con 10.000 puntos por defecto, para usuarios con rol `customer`.
+* Multiplicador configurable para sugerir el coste de rewards, con 2.000 por defecto.
+* Ajustes manuales administrativos trazables y protegidos contra saldo negativo.
 * Reversión total de puntos `earned` al cancelar o reembolsar completamente un pedido.
 * Sección administrativa de incidencias y reintento seguro de errores recuperables.
 
@@ -60,7 +62,7 @@ No implementado:
 * `earned_order:{order_id}`
 * `redeemed_order:{order_id}`
 * `redeemed_order:{order_id}:reward:{reward_id}`
-* `initial_bonus:{customer_id}:10000`
+* `initial_bonus:{customer_id}`
 * `cancelled_order:{order_id}`
 
 Las claves únicas de `lcter_wcpl_transactions` y `lcter_wcpl_order_rewards` son la garantía principal. Los metadatos WooCommerce son auxiliares.

@@ -109,6 +109,24 @@ class Customer_Points_Repository {
 		return false !== $result && 1 === $wpdb->rows_affected;
 	}
 
+	/**
+	 * Apply a signed manual balance delta without changing historical gross totals.
+	 */
+	public function adjust( int $customer_id, int $adjustment ): bool {
+		global $wpdb;
+
+		$result = $wpdb->query(
+			$wpdb->prepare(
+				'UPDATE ' . $this->table_name() . ' SET balance = balance + %d, updated_at = NOW() WHERE customer_id = %d AND balance + %d >= 0',
+				$adjustment,
+				$customer_id,
+				$adjustment
+			)
+		);
+
+		return false !== $result && 1 === $wpdb->rows_affected;
+	}
+
 	public function count_customers(): int {
 		global $wpdb;
 

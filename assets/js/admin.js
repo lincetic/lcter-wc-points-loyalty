@@ -12,6 +12,15 @@
 
         $('#lcter_wcpl_is_reward').on('change', toggleRewardFields);
         toggleRewardFields();
+
+		$('#lcter_wcpl_apply_suggested_cost').on('click', function() {
+			var suggestedCost = parseInt($(this).data('suggested-cost'), 10);
+
+			if (suggestedCost > 0) {
+				$('#lcter_wcpl_reward_points_cost').val(suggestedCost).trigger('change');
+			}
+		});
+
     });
 
 })(jQuery);

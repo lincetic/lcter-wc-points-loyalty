@@ -8,6 +8,7 @@
 namespace LCTER_WCPL\Admin_UI;
 
 use LCTER_WCPL\Services\Rewards_Service;
+use LCTER_WCPL\Settings;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -64,7 +65,11 @@ class Reward_Product_Admin {
 	public function product_panel(): void {
 		global $post;
 
-		$reward = $post ? ( new Rewards_Service() )->get_reward_by_product( (int) $post->ID ) : null;
+		$reward          = $post ? ( new Rewards_Service() )->get_reward_by_product( (int) $post->ID ) : null;
+		$multiplier      = Settings::get_reward_cost_multiplier();
+		$product         = $post ? wc_get_product( (int) $post->ID ) : null;
+		$price_with_tax  = $product ? (float) wc_get_price_including_tax( $product ) : 0.0;
+		$suggested_cost  = $price_with_tax > 0 ? (int) round( $price_with_tax * $multiplier ) : 0;
 		?>
 		<div id="lcter_wcpl_product_panel" class="panel woocommerce_options_panel">
 			<div class="options_group">
@@ -81,7 +86,7 @@ class Reward_Product_Admin {
 					array(
 						'id'                => 'lcter_wcpl_reward_points_cost',
 						'label'             => __( 'Coste del Regalo en Puntos', LCTER_WCPL_TEXT_DOMAIN ),
-						'description'       => __( 'Introduce el coste manualmente. Referencia documentada: precio con IVA incluido × 2.000.', LCTER_WCPL_TEXT_DOMAIN ),
+						'description'       => __( 'Puedes mantener cualquier coste manual o aplicar expresamente el cálculo sugerido.', LCTER_WCPL_TEXT_DOMAIN ),
 						'type'              => 'number',
 						'value'             => $reward ? (int) $reward['points_cost'] : '',
 						'wrapper_class'     => 'lcter-wcpl-reward-field',
@@ -91,6 +96,20 @@ class Reward_Product_Admin {
 						),
 					)
 				);
+				?>
+				<p class="form-field lcter-wcpl-reward-field lcter-wcpl-reward-suggestion">
+					<label><?php esc_html_e( 'Cálculo sugerido', LCTER_WCPL_TEXT_DOMAIN ); ?></label>
+					<span>
+						<?php echo esc_html( sprintf( __( 'Multiplicador configurado: %s.', LCTER_WCPL_TEXT_DOMAIN ), number_format_i18n( $multiplier ) ) ); ?>
+						<?php if ( $suggested_cost > 0 ) : ?>
+							<?php echo esc_html( sprintf( __( ' Precio guardado con IVA: %1$s. Coste sugerido: %2$s puntos.', LCTER_WCPL_TEXT_DOMAIN ), wp_strip_all_tags( wc_price( $price_with_tax ) ), number_format_i18n( $suggested_cost ) ) ); ?>
+							<button type="button" class="button" id="lcter_wcpl_apply_suggested_cost" data-suggested-cost="<?php echo esc_attr( (string) $suggested_cost ); ?>"><?php esc_html_e( 'Aplicar coste sugerido', LCTER_WCPL_TEXT_DOMAIN ); ?></button>
+						<?php else : ?>
+							<?php esc_html_e( ' Guarda primero un precio positivo en el producto para obtener una sugerencia.', LCTER_WCPL_TEXT_DOMAIN ); ?>
+						<?php endif; ?>
+					</span>
+				</p>
+				<?php
 				woocommerce_wp_checkbox(
 					array(
 						'id'            => 'lcter_wcpl_reward_active',

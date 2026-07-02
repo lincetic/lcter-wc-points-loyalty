@@ -8,6 +8,7 @@
 namespace LCTER_WCPL\Admin_UI;
 
 use LCTER_WCPL\Services\Initial_Bonus_Service;
+use LCTER_WCPL\Settings;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -51,6 +52,7 @@ class Initial_Bonus_Admin {
 		}
 
 		$summary = get_transient( $this->result_transient_key() );
+		$bonus_points = Settings::get_initial_bonus_points();
 		if ( is_array( $summary ) ) {
 			delete_transient( $this->result_transient_key() );
 			$this->render_summary( $summary );
@@ -58,7 +60,7 @@ class Initial_Bonus_Admin {
 		?>
 		<div class="card lcter-wcpl-initial-bonus">
 			<h2><?php esc_html_e( 'Bonus inicial de clientes', LCTER_WCPL_TEXT_DOMAIN ); ?></h2>
-			<p><?php esc_html_e( 'Asigna 10.000 puntos una sola vez a cada usuario WordPress que tenga el rol customer.', LCTER_WCPL_TEXT_DOMAIN ); ?></p>
+			<p><?php echo esc_html( sprintf( __( 'Asigna %s puntos una sola vez a cada usuario WordPress que tenga el rol customer.', LCTER_WCPL_TEXT_DOMAIN ), number_format_i18n( $bonus_points ) ) ); ?></p>
 			<p><strong><?php esc_html_e( 'La operación no se ejecuta automáticamente y puede tardar si existen muchos clientes.', LCTER_WCPL_TEXT_DOMAIN ); ?></strong></p>
 
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">

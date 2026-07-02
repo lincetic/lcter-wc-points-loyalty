@@ -56,7 +56,7 @@ Estado: completado para UC-006.
 
 * Configuración desde la edición de producto WooCommerce: completado.
 * Persistencia en `lcter_wcpl_rewards`: completado.
-* Coste manual con ayuda visual de la regla precio con IVA × 2.000: completado.
+* Coste manual con cálculo sugerido explícito basado en precio con IVA × multiplicador configurable: completado.
 * Activación, orden y fechas opcionales de disponibilidad: completado.
 * Consulta por producto y consulta de rewards activos: completado.
 * Catálogo visible limitado a 12 rewards ordenados por `sort_order`: completado.
@@ -125,17 +125,28 @@ Objetivo: registrar el saldo inicial documentado.
 
 Incluye:
 
-* Proceso para añadir 10.000 puntos iniciales.
+* Proceso para añadir el bonus inicial configurable, con 10.000 puntos por defecto.
 * Transacciones de tipo `initial_bonus`.
 * Evitar duplicados mediante clave idempotente por cliente e importe.
 
 Estado de Fase 6: completado para UC-007 con criterio inicial limitado al rol WordPress `customer`.
 
 * Accion manual en el dashboard con capacidad `manage_woocommerce`, nonce y confirmacion: completada.
-* Asignacion atomica de 10.000 puntos y transaccion `initial_bonus`: completada.
-* Idempotencia `initial_bonus:{customer_id}:10000`: completada.
+* Asignacion atomica del importe configurado y transaccion `initial_bonus`: completada.
+* Idempotencia estable `initial_bonus:{customer_id}` y compatibilidad con claves legacy que incluían el importe: completada.
 * Resumen de procesados, bonificados, omitidos y errores: completado.
 * Ejecucion automatica, WP-CLI y comunicaciones por email: no implementadas.
+
+## Configuración General Y Ajustes Manuales
+
+Estado: completado para UC-009 y UC-010.
+
+* Opciones Settings API para bonus inicial y multiplicador de rewards, validadas como enteros positivos: completado.
+* Valores por defecto 10.000 y 2.000: completado.
+* Botón explícito de coste sugerido sin sobrescritura automática: completado.
+* Ajuste firmado desde la edición del cliente, protegido por `manage_woocommerce`, permiso de edición y nonce: completado.
+* Transacción atómica `manual_adjustment` con motivo, responsable y saldos anterior/posterior: completado.
+* Protección contra saldo negativo y conservación de acumulados históricos brutos: completado.
 
 ## Cancelaciones Y Reembolsos Totales
 

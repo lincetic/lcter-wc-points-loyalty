@@ -83,6 +83,10 @@ register_deactivation_hook( __FILE__, 'lcter_wcpl_deactivate' );
  * Plugin activation hook.
  */
 function lcter_wcpl_activate() {
+	if ( ! class_exists( 'LCTER_WCPL\Settings' ) ) {
+		require_once LCTER_WCPL_INCLUDES_DIR . 'class-settings.php';
+	}
+
 	if ( ! class_exists( 'LCTER_WCPL\Database' ) ) {
 		require_once LCTER_WCPL_INCLUDES_DIR . 'class-database.php';
 	}

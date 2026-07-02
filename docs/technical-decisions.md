@@ -181,7 +181,8 @@ Motivo:
 
 * Mantener `lcter_wcpl_rewards` como fuente de verdad del catálogo.
 * Diferenciar eliminar una configuración de retirarla temporalmente del catálogo.
-* No introducir todavía recálculo automático del coste. La interfaz solo muestra como ayuda la regla precio con IVA incluido × 2.000.
+* Conservar el coste manual como fuente de verdad y ofrecer una acción explícita que copia al campo la sugerencia `precio guardado con IVA incluido × multiplicador configurado`.
+* No recalcular ni sobrescribir el coste automáticamente cuando cambian el precio o el multiplicador.
 
 ## TD-017 - Disponibilidad Y Límite Del Catálogo
 
@@ -274,7 +275,9 @@ La pantalla de pedido usa capacidad de edición del pedido o `manage_woocommerce
 
 Decision: el bonus inicial se ejecuta exclusivamente desde una accion manual del dashboard por usuarios con `manage_woocommerce`. Requiere nonce y una confirmacion explicita. No se ejecuta durante activacion ni en tareas automaticas.
 
-En esta fase se procesan solo usuarios WordPress con rol `customer`. Cada cliente recibe 10.000 puntos mediante la operacion atomica de saldo y una transaccion `initial_bonus` con clave `initial_bonus:{customer_id}:10000`. La clave unica y la comprobacion dentro del bloqueo de saldo hacen segura la repeticion y permiten clasificar cada resultado como bonificado, omitido o error.
+En esta fase se procesan solo usuarios WordPress con rol `customer`. Cada cliente recibe el importe configurado —10.000 puntos por defecto— mediante la operacion atomica de saldo y una transaccion `initial_bonus` con clave `initial_bonus:{customer_id}`.
+
+Además de la clave nueva, la comprobación atómica por `customer_id + type=initial_bonus` reconoce transacciones anteriores cuya clave incluía el importe. Así el bonus sigue siendo único aunque cambie la configuración o existan datos legacy.
 
 El resumen se guarda temporalmente por administrador y muestra procesados, bonificados, omitidos y errores tras la redireccion. El criterio de clientes puede cambiar en una fase posterior; no incluye invitados ni otros roles.
 
@@ -295,3 +298,21 @@ Decision: la edicion administrativa del pedido muestra una seccion de incidencia
 Cada incidencia muestra tipo, mensaje, puntos, fecha y accion recomendada. Los reintentos exigen `manage_woocommerce`, nonce ligado a pedido y operacion y una comprobacion final de que el estado sigue siendo recuperable.
 
 El reintento de canje vuelve a ejecutar `WooCommerce_Checkout_Adapter::process_paid_order()`: `redeemed_order:{order_id}` evita otro descuento y las claves de `order_rewards` completan solo filas ausentes. El reintento de cancelacion usa `WooCommerce_Orders_Adapter::retry_order_reversal()` y conserva `cancelled_order:{order_id}`. No se introducen operaciones alternativas sobre saldo ni nuevas reglas de negocio.
+
+## TD-026 - Opciones De Negocio Mediante Settings API
+
+Decisión: `lcter_wcpl_initial_bonus_points` y `lcter_wcpl_reward_cost_multiplier` son opciones independientes registradas con Settings API. Ambas aceptan únicamente enteros positivos dentro del rango `INT`; sus valores por defecto son 10.000 y 2.000.
+
+La pantalla y el guardado usan `manage_woocommerce`. Settings API aporta el nonce; los callbacks de sanitización conservan el último valor válido cuando la entrada no cumple la regla. `Settings` centraliza nombres, valores por defecto y lectura defensiva.
+
+Motivo: evitar constantes dispersas y garantizar que bonus, ayuda administrativa y futuras lecturas consuman la misma configuración validada.
+
+## TD-027 - Ajuste Manual Atómico Desde El Cliente
+
+Decisión: la edición de usuarios con rol `customer` muestra el saldo y enlaza a un formulario administrativo independiente para introducir el delta firmado y el motivo. La operación requiere `manage_woocommerce`, permiso para editar el usuario y un nonce específico.
+
+El formulario independiente evita acoplar el movimiento de saldo al guardado general del perfil: un error de validación del usuario no puede ejecutar o repetir el ajuste.
+
+`Points_Service::adjust_points()` bloquea la fila del cliente y coordina `Customer_Points_Repository::adjust()` con `Transactions_Repository::insert()` dentro de la misma transacción. Registra `type=manual_adjustment`, delta firmado, `balance_before`, `balance_after`, `source=woocommerce_customer_admin`, `description` y `created_by`; no usa SQL en administración ni en el servicio.
+
+Un ajuste negativo que supere el saldo se rechaza por el servicio y también por la condición del repositorio. `total_earned` y `total_redeemed` no cambian porque representan acumulados históricos brutos de compras y canjes, no correcciones administrativas.

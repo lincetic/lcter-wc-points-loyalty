@@ -34,7 +34,9 @@ Casos:
 
 * Cada acumulación genera transacción.
 * Cada canje genera transacción.
-* El bonus inicial genera transacción `initial_bonus`.
+* El bonus inicial usa el importe configurado y genera transacción `initial_bonus`.
+* Cambiar el importe configurado no permite un segundo bonus al mismo cliente.
+* Cada ajuste administrativo genera una transacción `manual_adjustment` con delta firmado, motivo y `created_by`.
 * Se guardan `balance_before` y `balance_after`.
 * La acumulación crea `type=earned` e `idempotency_key=earned_order:{order_id}`.
 * Repetir el procesamiento del mismo pedido no crea una segunda transacción ni modifica otra vez el saldo.
@@ -111,14 +113,15 @@ Mientras no exista infraestructura PHPUnit:
 
 1. Editar un producto WooCommerce y abrir la pestaña “Puntos de Lealtad”.
 2. Marcar “Regalo canjeable” y comprobar que aparecen coste, activo, orden y fechas.
-3. Confirmar que la ayuda del coste muestra “precio con IVA incluido × 2.000” sin modificar automáticamente el valor.
-4. Guardar un coste positivo, orden, inicio y fin; comprobar una única fila en `lcter_wcpl_rewards` con todos los valores.
-5. Editar los valores y confirmar que se actualiza la misma fila para el `product_id`.
-6. Desmarcar “Regalo activo” y confirmar que la fila permanece con `active=0` y no aparece en la consulta activa.
-7. Configurar fechas futuras y pasadas para verificar que solo aparece dentro de su ventana inclusiva.
-8. Configurar más de 12 rewards activos y confirmar que la consulta devuelve los 12 primeros por `sort_order` e `id`.
-9. Desmarcar “Regalo canjeable” y confirmar que se elimina la fila del producto.
-10. Repetir un guardado con nonce inválido o sin capacidad de edición y confirmar que no cambia la tabla.
+3. Confirmar que la ayuda muestra el multiplicador configurado y la sugerencia basada en el precio guardado con IVA incluido.
+4. Confirmar que la sugerencia no modifica el campo hasta pulsar “Aplicar coste sugerido”.
+5. Guardar un coste positivo, orden, inicio y fin; comprobar una única fila en `lcter_wcpl_rewards` con todos los valores.
+6. Editar los valores y confirmar que se actualiza la misma fila para el `product_id`.
+7. Desmarcar “Regalo activo” y confirmar que la fila permanece con `active=0` y no aparece en la consulta activa.
+8. Configurar fechas futuras y pasadas para verificar que solo aparece dentro de su ventana inclusiva.
+9. Configurar más de 12 rewards activos y confirmar que la consulta devuelve los 12 primeros por `sort_order` e `id`.
+10. Desmarcar “Regalo canjeable” y confirmar que se elimina la fila del producto.
+11. Repetir un guardado con nonce inválido o sin capacidad de edición y confirmar que no cambia la tabla.
 
 ## Pruebas Del Canje En Checkout
 
@@ -262,12 +265,43 @@ La suite unitaria cubre servicios aislados. Siguen siendo necesarias pruebas de 
 3. Enviar con nonce invalido y confirmar que WordPress rechaza la accion.
 4. Ejecutar con un usuario sin `manage_woocommerce` y confirmar acceso denegado.
 5. Crear usuarios con rol `customer` y otros roles; ejecutar y confirmar que solo los primeros se procesan.
-6. Verificar 10.000 puntos adicionales, incremento de `total_earned` y una transaccion `initial_bonus` con `initial_bonus:{customer_id}:10000` por cliente.
-7. Ejecutar de nuevo y confirmar saldo sin cambios, cero bonificados y clientes existentes contabilizados como omitidos.
-8. Forzar un fallo de persistencia y confirmar que se contabiliza como error sin dejar saldo sin transaccion.
-9. Confirmar que el resumen muestra procesados = bonificados + omitidos + errores.
-10. Confirmar que activacion, cron y frontend no ejecutan el bonus y que no se envian emails.
+6. Verificar el importe configurado adicional, incremento de `total_earned` y una transacción `initial_bonus` con `initial_bonus:{customer_id}` por cliente.
+7. Cambiar el importe configurado, repetir la acción y confirmar que los clientes ya bonificados quedan omitidos.
+8. Ejecutar de nuevo y confirmar saldo sin cambios, cero bonificados y clientes existentes contabilizados como omitidos.
+9. Forzar un fallo de persistencia y confirmar que se contabiliza como error sin dejar saldo sin transacción.
+10. Confirmar que el resumen muestra procesados = bonificados + omitidos + errores.
+11. Confirmar que activación, cron y frontend no ejecutan el bonus y que no se envían emails.
 
+## Pruebas De Ajustes Generales
+
+Casos manuales:
+
+1. Abrir Points Loyalty > Configuración con un usuario con `manage_woocommerce`.
+2. Guardar valores enteros positivos diferentes de los predeterminados y comprobar su persistencia.
+3. Intentar guardar cero, negativos, decimales, texto y valores fuera de rango; comprobar el error y que se conserva el último valor válido.
+4. Ejecutar el bonus inicial y confirmar que usa el importe vigente.
+5. Editar un reward y confirmar que muestra el multiplicador vigente.
+6. Comprobar `coste sugerido = round(precio guardado con IVA incluido × multiplicador)` y que solo se copia tras pulsar el botón.
+
+## Pruebas De Ajuste Manual De Cliente
+
+Casos unitarios:
+
+* Un delta positivo incrementa el saldo y registra `manual_adjustment`.
+* Un delta negativo permitido reduce el saldo.
+* Se guardan `balance_before`, `balance_after`, delta firmado, motivo y `created_by`.
+* Un motivo vacío falla sin modificar saldo ni historial.
+* Una resta superior al saldo devuelve `insufficient_balance` y no deja saldo negativo.
+
+Casos manuales de integración:
+
+1. Editar un usuario con rol `customer` como administrador con `manage_woocommerce`.
+2. Sumar puntos con motivo y confirmar saldo y transacción.
+3. Restar una cantidad inferior o igual al saldo y confirmar los saldos anterior y posterior.
+4. Intentar restar más del saldo y comprobar el aviso sin cambios persistentes.
+5. Intentar enviar importe sin motivo, motivo sin importe, decimal o cero y comprobar que WordPress no procesa el ajuste.
+6. Confirmar que un usuario sin `manage_woocommerce` no ve ni puede ejecutar el ajuste.
+7. Confirmar que `total_earned` y `total_redeemed` no cambian.
 ## Pruebas Manuales De Cancelacion Y Reembolso Total
 
 1. Pagar un pedido registrado, confirmar su transaccion `earned` y anotar puntos y saldo.

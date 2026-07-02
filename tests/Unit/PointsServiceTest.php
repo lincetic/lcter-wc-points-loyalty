@@ -44,6 +44,23 @@ final class PointsServiceTest extends TestCase {
 		self::assertSame( 600, $transactions->rows[0]['balance_after'] );
 	}
 
+	public function test_initial_bonus_remains_unique_when_configured_amount_changes(): void {
+		$balances     = new In_Memory_Customer_Points_Repository( 0 );
+		$transactions = new In_Memory_Transactions_Repository();
+		$service      = new Points_Service( $balances, $transactions, new In_Memory_Transaction_Manager() );
+
+		self::assertSame(
+			Points_Service::RESULT_ADDED,
+			$service->add_points_with_status( 7, 10000, 'initial_bonus', null, null, null, 'Inicial.', null, 99, 'initial_bonus:7:10000' )
+		);
+		self::assertSame(
+			Points_Service::RESULT_DUPLICATE,
+			$service->add_points_with_status( 7, 12500, 'initial_bonus', null, null, null, 'Nuevo.', null, 99, 'initial_bonus:7' )
+		);
+		self::assertSame( 10000, $service->get_balance( 7 ) );
+		self::assertCount( 1, $transactions->rows );
+	}
+
 	public function test_cancelled_order_reversal_is_atomic_and_idempotent(): void {
 		$balances     = new In_Memory_Customer_Points_Repository( 1000 );
 		$transactions = new In_Memory_Transactions_Repository();
@@ -76,6 +93,34 @@ final class PointsServiceTest extends TestCase {
 			$service->reverse_order_earned_points( 7, 400, 102, 'Cancelled.' )
 		);
 		self::assertSame( 399, $service->get_balance( 7 ) );
+		self::assertCount( 0, $transactions->rows );
+	}
+
+	public function test_manual_adjustment_records_signed_delta_and_balances(): void {
+		$balances     = new In_Memory_Customer_Points_Repository( 1000 );
+		$transactions = new In_Memory_Transactions_Repository();
+		$service      = new Points_Service( $balances, $transactions, new In_Memory_Transaction_Manager() );
+
+		self::assertSame( Points_Service::RESULT_ADDED, $service->adjust_points( 7, 250, 'Corrección aprobada.', 99 ) );
+		self::assertSame( Points_Service::RESULT_ADDED, $service->adjust_points( 7, -400, 'Incidencia corregida.', 99 ) );
+		self::assertSame( 850, $service->get_balance( 7 ) );
+		self::assertCount( 2, $transactions->rows );
+		self::assertSame( 'manual_adjustment', $transactions->rows[1]['type'] );
+		self::assertSame( -400, $transactions->rows[1]['points'] );
+		self::assertSame( 1250, $transactions->rows[1]['balance_before'] );
+		self::assertSame( 850, $transactions->rows[1]['balance_after'] );
+		self::assertSame( 'Incidencia corregida.', $transactions->rows[1]['description'] );
+		self::assertSame( 99, $transactions->rows[1]['created_by'] );
+	}
+
+	public function test_manual_adjustment_requires_description_and_cannot_make_balance_negative(): void {
+		$balances     = new In_Memory_Customer_Points_Repository( 100 );
+		$transactions = new In_Memory_Transactions_Repository();
+		$service      = new Points_Service( $balances, $transactions, new In_Memory_Transaction_Manager() );
+
+		self::assertSame( Points_Service::RESULT_FAILED, $service->adjust_points( 7, 25, '', 99 ) );
+		self::assertSame( Points_Service::RESULT_INSUFFICIENT_BALANCE, $service->adjust_points( 7, -101, 'Demasiado.', 99 ) );
+		self::assertSame( 100, $service->get_balance( 7 ) );
 		self::assertCount( 0, $transactions->rows );
 	}
 }
@@ -117,11 +162,29 @@ final class In_Memory_Customer_Points_Repository extends Customer_Points_Reposit
 		$this->balance -= $points;
 		return true;
 	}
+
+	public function adjust( int $customer_id, int $adjustment ): bool {
+		if ( $this->balance + $adjustment < 0 ) {
+			return false;
+		}
+
+		$this->balance += $adjustment;
+		return true;
+	}
 }
 
 final class In_Memory_Transactions_Repository extends Transactions_Repository {
 	/** @var array<int,array<string,mixed>> */
 	public array $rows = array();
+
+	public function exists_for_customer_and_type( int $customer_id, string $type ): bool {
+		foreach ( $this->rows as $row ) {
+			if ( $customer_id === (int) $row['customer_id'] && $type === $row['type'] ) {
+				return true;
+			}
+		}
+		return false;
+	}
 
 	public function exists_for_order_and_type( int $order_id, string $type ): bool {
 		foreach ( $this->rows as $row ) {

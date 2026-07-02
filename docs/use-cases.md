@@ -64,8 +64,10 @@ Actor: administración.
 
 1. Administración selecciona productos WooCommerce como regalos.
 2. Cada regalo queda asociado a un coste en puntos.
-3. El catálogo se mantiene limitado aproximadamente a 10-12 productos.
-4. El catálogo puede cambiar cada trimestre.
+3. Administración puede mantener el coste manual o pulsar la acción que propone `precio guardado con IVA incluido × multiplicador configurado`.
+4. El cálculo sugerido no sobrescribe el coste sin esa acción explícita.
+5. El catálogo se mantiene limitado aproximadamente a 10-12 productos.
+6. El catálogo puede cambiar cada trimestre.
 
 Reglas: BR-012, BR-013.
 
@@ -74,8 +76,9 @@ Reglas: BR-012, BR-013.
 Actor: administración o proceso de inicialización.
 
 1. Se identifica a los clientes que deben recibir el bonus.
-2. Se añade un saldo inicial de 10.000 puntos.
-3. Cada movimiento queda registrado como transacción de tipo `initial_bonus`.
+2. Se lee el importe entero positivo configurado, con 10.000 puntos como valor por defecto.
+3. Se añade ese saldo solo si el cliente nunca recibió un bonus inicial.
+4. Cada movimiento queda registrado como transacción de tipo `initial_bonus`.
 
 Reglas: BR-014, BR-016.
 
@@ -88,3 +91,26 @@ Actor: integración Clientify.
 3. La información también puede estar disponible como metadatos del pedido u order item.
 
 Reglas: BR-015, database.md.
+
+## UC-009 - Configurar Valores Generales
+
+Actor: administración con `manage_woocommerce`.
+
+1. Administración abre Points Loyalty > Configuración.
+2. Indica enteros positivos para el bonus inicial y el multiplicador de rewards.
+3. WordPress verifica el nonce de Settings API y la capacidad.
+4. El plugin valida y guarda las opciones; un valor inválido conserva el último valor válido.
+
+Reglas: BR-012, BR-014.
+
+## UC-010 - Ajustar Manualmente Puntos De Cliente
+
+Actor: administración con `manage_woocommerce` y permiso para editar el usuario.
+
+1. Administración abre la edición de un usuario con rol `customer` y pulsa “Ajustar puntos”.
+2. En el formulario independiente introduce un entero firmado distinto de cero y un motivo obligatorio.
+3. El plugin verifica nonce, capacidades, cliente y entradas.
+4. El servicio bloquea el saldo y rechaza la operación si el resultado sería negativo.
+5. En una única transacción atómica actualiza el saldo y crea `type=manual_adjustment` con saldos anterior y posterior, motivo y administrador responsable.
+
+Reglas: BR-008, BR-016, BR-017.

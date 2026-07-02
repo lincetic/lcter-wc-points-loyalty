@@ -57,6 +57,7 @@ class Loader {
 	 * Load plugin files.
 	 */
 	private function load_includes(): void {
+		require_once LCTER_WCPL_INCLUDES_DIR . 'class-settings.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'class-database.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'class-activator.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'class-deactivator.php';
@@ -100,11 +101,13 @@ class Loader {
 		require_once LCTER_WCPL_INCLUDES_DIR . 'admin/class-order-traceability-admin.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'admin/class-initial-bonus-admin.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'admin/class-order-processing-error-admin.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'admin/class-customer-points-admin.php';
 		Admin::instance();
 		Admin_UI\Reward_Product_Admin::instance();
 		Admin_UI\Order_Traceability_Admin::instance();
 		Admin_UI\Initial_Bonus_Admin::instance();
 		Admin_UI\Order_Processing_Error_Admin::instance();
+		Admin_UI\Customer_Points_Admin::instance();
 	}
 
 	/**

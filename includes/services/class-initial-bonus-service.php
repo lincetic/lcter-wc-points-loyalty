@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace LCTER_WCPL\Services;
 
 use LCTER_WCPL\Database;
+use LCTER_WCPL\Settings;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -19,12 +20,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Applies the one-time initial bonus to explicit customer IDs.
  */
 class Initial_Bonus_Service {
-	const BONUS_POINTS = 10000;
-
 	private Points_Service $points;
+	private int $bonus_points;
 
-	public function __construct( ?Points_Service $points = null ) {
-		$this->points = $points ?? new Points_Service();
+	public function __construct( ?Points_Service $points = null, ?int $bonus_points = null ) {
+		$this->points       = $points ?? new Points_Service();
+		$this->bonus_points = $bonus_points && $bonus_points > 0 ? $bonus_points : Settings::get_initial_bonus_points();
 	}
 
 	/**
@@ -54,15 +55,18 @@ class Initial_Bonus_Service {
 
 			$result = $this->points->add_points_with_status(
 				$customer_id,
-				self::BONUS_POINTS,
+				$this->bonus_points,
 				Database::TRANSACTION_INITIAL_BONUS,
 				null,
 				null,
 				'admin_initial_bonus',
-				'Bonus inicial de 10.000 puntos.',
-				array( 'customer_criterion' => 'wordpress_role_customer' ),
+				'Bonus inicial de ' . number_format( $this->bonus_points, 0, ',', '.' ) . ' puntos.',
+				array(
+					'customer_criterion' => 'wordpress_role_customer',
+					'configured_points'  => $this->bonus_points,
+				),
 				$created_by,
-				'initial_bonus:' . $customer_id . ':' . self::BONUS_POINTS
+				'initial_bonus:' . $customer_id
 			);
 
 			if ( Points_Service::RESULT_ADDED === $result ) {

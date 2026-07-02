@@ -16,6 +16,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class Transactions_Repository {
+	public function exists_for_customer_and_type( int $customer_id, string $type ): bool {
+		global $wpdb;
+
+		if ( $customer_id <= 0 || '' === $type ) {
+			return false;
+		}
+
+		return (bool) $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT 1 FROM ' . $this->table_name() . ' WHERE customer_id = %d AND type = %s LIMIT 1',
+				$customer_id,
+				$type
+			)
+		);
+	}
+
 	public function exists_for_order_and_type( int $order_id, string $type ): bool {
 		global $wpdb;
 

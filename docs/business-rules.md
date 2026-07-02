@@ -73,9 +73,13 @@ El cliente debe poder elegir la opción:
 
 ## BR-012 - Precio en puntos de regalos
 
-El coste en puntos de un regalo se calcula así:
+El coste sugerido en puntos de un regalo se calcula así:
 
-Precio IVA incluido del producto x 2.000
+Precio IVA incluido del producto x multiplicador configurado
+
+El multiplicador es un entero positivo configurable desde administración y su valor por defecto es 2.000.
+
+La edición del reward mantiene un coste manual. El valor sugerido solo sustituye el campo cuando administración pulsa expresamente la acción de cálculo; nunca se sobrescribe automáticamente.
 
 Ejemplo:
 
@@ -93,9 +97,11 @@ Pueden ser productos, merchandising u otros artículos.
 
 ## BR-014 - Bonus inicial
 
-Al iniciar el sistema, se quiere añadir un saldo inicial de 10.000 puntos a todos los clientes.
+Al iniciar el sistema, se quiere añadir un saldo inicial a todos los clientes. El importe es un entero positivo configurable desde administración y su valor por defecto es 10.000 puntos.
 
 Este movimiento debe quedar registrado como transacción.
+
+Cada cliente solo puede recibir una transacción `initial_bonus`, aunque el importe configurado cambie después.
 
 ## BR-015 - Clientify
 
@@ -113,3 +119,11 @@ Tipos previstos:
 * manual_adjustment
 * refund
 * cancelled
+
+## BR-017 - Ajuste manual administrativo
+
+Un usuario con capacidad `manage_woocommerce` puede sumar o restar manualmente un número entero de puntos desde la edición de un cliente WooCommerce.
+
+El ajuste requiere un motivo no vacío, nunca puede dejar saldo negativo y debe crear una transacción `manual_adjustment` con delta firmado, `balance_before`, `balance_after`, `description` y `created_by`.
+
+Los ajustes manuales modifican `balance`, pero no los acumulados históricos brutos `total_earned` ni `total_redeemed`.

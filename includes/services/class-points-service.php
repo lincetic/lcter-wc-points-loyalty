@@ -122,6 +122,17 @@ class Points_Service {
 				return self::RESULT_DUPLICATE;
 			}
 
+			if (
+				Database::TRANSACTION_INITIAL_BONUS === $type &&
+				$this->transactions->exists_for_customer_and_type( $customer_id, $type )
+			) {
+				if ( ! $this->transaction_manager->commit() ) {
+					throw new \RuntimeException( 'Could not commit the initial bonus duplicate check.' );
+				}
+
+				return self::RESULT_DUPLICATE;
+			}
+
 			if ( Database::TRANSACTION_EARNED === $type && $order_id && $this->transactions->exists_for_order_and_type( $order_id, $type ) ) {
 				if ( ! $this->transaction_manager->commit() ) {
 					throw new \RuntimeException( 'Could not commit the legacy duplicate transaction check.' );
@@ -156,6 +167,67 @@ class Points_Service {
 
 			if ( ! $this->transaction_manager->commit() ) {
 				throw new \RuntimeException( 'Could not commit the points transaction.' );
+			}
+
+			return self::RESULT_ADDED;
+		} catch ( \Throwable $exception ) {
+			$this->transaction_manager->rollback();
+			return self::RESULT_FAILED;
+		}
+	}
+
+	/**
+	 * Apply a signed administrative adjustment and register its audit transaction atomically.
+	 *
+	 * @return string One of the RESULT_* constants.
+	 */
+	public function adjust_points( int $customer_id, int $adjustment, string $description, int $created_by ): string {
+		$description = trim( $description );
+		if ( $customer_id <= 0 || 0 === $adjustment || '' === $description || $created_by <= 0 ) {
+			return self::RESULT_FAILED;
+		}
+
+		if ( ! $this->transaction_manager->begin() ) {
+			return self::RESULT_FAILED;
+		}
+
+		try {
+			$balance_before = $this->points->lock_balance( $customer_id );
+			if ( null === $balance_before ) {
+				throw new \RuntimeException( 'Could not lock the customer balance.' );
+			}
+
+			$balance_after = $balance_before + $adjustment;
+			if ( $balance_after < 0 ) {
+				$this->transaction_manager->rollback();
+				return self::RESULT_INSUFFICIENT_BALANCE;
+			}
+
+			if ( $balance_after > 2147483647 || ! $this->points->adjust( $customer_id, $adjustment ) ) {
+				throw new \RuntimeException( 'Could not adjust the customer balance.' );
+			}
+
+			if ( ! $this->transactions->insert(
+				array(
+					'customer_id'     => $customer_id,
+					'order_id'        => null,
+					'order_item_id'   => null,
+					'type'            => Database::TRANSACTION_MANUAL_ADJUSTMENT,
+					'points'          => $adjustment,
+					'balance_before'  => $balance_before,
+					'balance_after'   => $balance_after,
+					'source'          => 'woocommerce_customer_admin',
+					'description'     => $description,
+					'metadata'        => null,
+					'created_by'      => $created_by,
+					'idempotency_key' => null,
+				)
+			) ) {
+				throw new \RuntimeException( 'Could not insert the manual adjustment transaction.' );
+			}
+
+			if ( ! $this->transaction_manager->commit() ) {
+				throw new \RuntimeException( 'Could not commit the manual adjustment transaction.' );
 			}
 
 			return self::RESULT_ADDED;

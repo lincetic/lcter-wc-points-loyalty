@@ -15,7 +15,7 @@ use PHPUnit\Framework\TestCase;
 final class InitialBonusServiceTest extends TestCase {
 	public function test_bonus_is_idempotent_and_summary_distinguishes_skipped_customers(): void {
 		$points  = new In_Memory_Initial_Bonus_Points_Service();
-		$service = new Initial_Bonus_Service( $points );
+		$service = new Initial_Bonus_Service( $points, 12500 );
 
 		$first = $service->apply_to_customers( array( 7, 8 ), 99 );
 		self::assertSame(
@@ -29,9 +29,10 @@ final class InitialBonusServiceTest extends TestCase {
 			$second
 		);
 
-		self::assertSame( 10000, $points->balances[7] );
-		self::assertSame( 10000, $points->balances[8] );
-		self::assertSame( 'initial_bonus:7:10000', $points->operations[0]['idempotency_key'] );
+		self::assertSame( 12500, $points->balances[7] );
+		self::assertSame( 12500, $points->balances[8] );
+		self::assertSame( 'initial_bonus:7', $points->operations[0]['idempotency_key'] );
+		self::assertSame( 12500, $points->operations[0]['points'] );
 		self::assertSame( Database::TRANSACTION_INITIAL_BONUS, $points->operations[0]['type'] );
 	}
 }
@@ -71,6 +72,7 @@ final class In_Memory_Initial_Bonus_Points_Service extends Points_Service {
 		$this->balances[ $customer_id ] = ( $this->balances[ $customer_id ] ?? 0 ) + $points;
 		$this->operations[]              = array(
 			'customer_id'     => $customer_id,
+			'points'          => $points,
 			'type'            => $type,
 			'idempotency_key' => $idempotency_key,
 		);

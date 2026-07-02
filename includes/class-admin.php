@@ -53,6 +53,49 @@ class Admin {
 	private function register_settings(): void {
 		register_setting(
 			'lcter_wcpl_settings_group',
+			Settings::OPTION_INITIAL_BONUS_POINTS,
+			array(
+				'type'              => 'integer',
+				'sanitize_callback' => array( Settings::class, 'sanitize_initial_bonus_points' ),
+				'default'           => Settings::DEFAULT_INITIAL_BONUS_POINTS,
+			)
+		);
+
+		register_setting(
+			'lcter_wcpl_settings_group',
+			Settings::OPTION_REWARD_COST_MULTIPLIER,
+			array(
+				'type'              => 'integer',
+				'sanitize_callback' => array( Settings::class, 'sanitize_reward_cost_multiplier' ),
+				'default'           => Settings::DEFAULT_REWARD_COST_MULTIPLIER,
+			)
+		);
+
+		add_settings_section(
+			'lcter_wcpl_general_settings',
+			__( 'Ajustes generales', LCTER_WCPL_TEXT_DOMAIN ),
+			array( $this, 'render_general_settings_description' ),
+			'lcter-wcpl-settings'
+		);
+
+		add_settings_field(
+			Settings::OPTION_INITIAL_BONUS_POINTS,
+			__( 'Puntos de bonus inicial', LCTER_WCPL_TEXT_DOMAIN ),
+			array( $this, 'render_initial_bonus_points_field' ),
+			'lcter-wcpl-settings',
+			'lcter_wcpl_general_settings'
+		);
+
+		add_settings_field(
+			Settings::OPTION_REWARD_COST_MULTIPLIER,
+			__( 'Multiplicador de coste de rewards', LCTER_WCPL_TEXT_DOMAIN ),
+			array( $this, 'render_reward_cost_multiplier_field' ),
+			'lcter-wcpl-settings',
+			'lcter_wcpl_general_settings'
+		);
+
+		register_setting(
+			'lcter_wcpl_settings_group',
 			'lcter_wcpl_points_expiry_days',
 			array(
 				'type'              => 'integer',
@@ -91,6 +134,41 @@ class Admin {
 	 */
 	private function register_hooks(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+		add_filter( 'option_page_capability_lcter_wcpl_settings_group', array( $this, 'settings_capability' ) );
+	}
+
+	/**
+	 * Use the same capability for the settings page and Settings API save action.
+	 */
+	public function settings_capability(): string {
+		return 'manage_woocommerce';
+	}
+
+	/**
+	 * Render the general settings section introduction.
+	 */
+	public function render_general_settings_description(): void {
+		echo '<p>' . esc_html__( 'Valores de negocio aplicados a nuevas operaciones del programa de fidelidad.', LCTER_WCPL_TEXT_DOMAIN ) . '</p>';
+	}
+
+	/**
+	 * Render the configurable initial bonus field.
+	 */
+	public function render_initial_bonus_points_field(): void {
+		?>
+		<input type="number" class="small-text" min="1" step="1" id="<?php echo esc_attr( Settings::OPTION_INITIAL_BONUS_POINTS ); ?>" name="<?php echo esc_attr( Settings::OPTION_INITIAL_BONUS_POINTS ); ?>" value="<?php echo esc_attr( (string) Settings::get_initial_bonus_points() ); ?>" required />
+		<p class="description"><?php esc_html_e( 'Importe usado al ejecutar manualmente el bonus inicial. Valor por defecto: 10.000.', LCTER_WCPL_TEXT_DOMAIN ); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the configurable reward multiplier field.
+	 */
+	public function render_reward_cost_multiplier_field(): void {
+		?>
+		<input type="number" class="small-text" min="1" step="1" id="<?php echo esc_attr( Settings::OPTION_REWARD_COST_MULTIPLIER ); ?>" name="<?php echo esc_attr( Settings::OPTION_REWARD_COST_MULTIPLIER ); ?>" value="<?php echo esc_attr( (string) Settings::get_reward_cost_multiplier() ); ?>" required />
+		<p class="description"><?php esc_html_e( 'Se multiplica por el precio del producto con IVA incluido para sugerir su coste en puntos. Valor por defecto: 2.000.', LCTER_WCPL_TEXT_DOMAIN ); ?></p>
+		<?php
 	}
 
 	/**
@@ -163,10 +241,13 @@ class Admin {
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Configuracion - LCTER Points Loyalty', LCTER_WCPL_TEXT_DOMAIN ); ?></h1>
+			<?php settings_errors( 'lcter_wcpl_settings' ); ?>
 
 			<form method="post" action="options.php">
 				<?php settings_fields( 'lcter_wcpl_settings_group' ); ?>
+				<?php do_settings_sections( 'lcter-wcpl-settings' ); ?>
 
+				<h2><?php esc_html_e( 'Opciones reservadas', LCTER_WCPL_TEXT_DOMAIN ); ?></h2>
 				<table class="form-table" role="presentation">
 					<tr>
 						<th scope="row">

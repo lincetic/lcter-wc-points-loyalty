@@ -67,7 +67,9 @@ No añadir SQL en administración, servicios, adaptadores o plantillas.
 * Los regalos se añaden a coste cero y se identifican como REGALO.
 * `lcter_wcpl_order_rewards` es la fuente principal de regalos canjeados.
 * Los metadatos de pedido/item son trazabilidad auxiliar, no fuente principal del saldo.
-* El bonus inicial es manual, de 10.000 puntos y solo para usuarios con rol `customer`.
+* El bonus inicial es manual, configurable (10.000 puntos por defecto), único por cliente y solo para usuarios con rol `customer`.
+* El multiplicador sugerido de rewards es configurable (2.000 por defecto) y nunca sobrescribe el coste manual sin acción administrativa explícita.
+* Los ajustes manuales requieren `manage_woocommerce`, motivo, nonce y servicio atómico; nunca permiten saldo negativo.
 * Cancelaciones y reembolsos totales revierten puntos `earned`; los reembolsos parciales siguen pendientes.
 
 ## Idempotencia Obligatoria
@@ -75,7 +77,7 @@ No añadir SQL en administración, servicios, adaptadores o plantillas.
 * Acumulación: `earned_order:{order_id}`.
 * Canje: `redeemed_order:{order_id}`.
 * Reward de pedido: `redeemed_order:{order_id}:reward:{reward_id}`.
-* Bonus inicial: `initial_bonus:{customer_id}:10000`.
+* Bonus inicial: `initial_bonus:{customer_id}` más comprobación por cliente y tipo para datos legacy.
 * Cancelación/reembolso total: `cancelled_order:{order_id}`.
 
 La restricción única de base de datos es la garantía final. Los metadatos nunca deben sustituirla.

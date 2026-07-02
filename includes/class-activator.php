@@ -34,6 +34,8 @@ class Activator {
 	 */
 	private static function set_default_options(): void {
 		$defaults = array(
+			Settings::OPTION_INITIAL_BONUS_POINTS       => Settings::DEFAULT_INITIAL_BONUS_POINTS,
+			Settings::OPTION_REWARD_COST_MULTIPLIER    => Settings::DEFAULT_REWARD_COST_MULTIPLIER,
 			'lcter_wcpl_points_expiry_days'       => 0,
 			'lcter_wcpl_enable_notifications'     => '1',
 			'lcter_wcpl_remove_data_on_uninstall' => '0',
