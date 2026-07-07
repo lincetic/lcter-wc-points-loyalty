@@ -146,6 +146,8 @@ Casos de carrito y pedido:
 * Cada order item contiene `_lcter_wcpl_is_reward`, `_lcter_wcpl_reward_id`, `_lcter_wcpl_points_cost_each` y `_lcter_wcpl_points_cost_total`.
 * Crear un pedido impagado deja el canje en `pending_payment` y no descuenta puntos.
 * Al pagar se crea una transacción `redeemed` y una fila por reward en `lcter_wcpl_order_rewards`.
+* En pagos automáticos confirmados, el canje queda completado antes de generar el email automático de pedido en procesando o completado.
+* En pagos manuales que dejan el pedido en `pending` u `on-hold`, el email y el pedido conservan `REGALO: PENDIENTE DE PAGO` hasta que el pedido esté pagado.
 * Repetir todos los hooks de pago no descuenta ni registra dos veces.
 * Un fallo después de descontar puede reintentarse para completar filas ausentes.
 
@@ -165,6 +167,10 @@ Casos de carrito y pedido:
 12. Repetir cambios a `processing` y `completed`; comprobar que saldo y filas no cambian.
 13. Reducir el saldo entre creación y pago; confirmar que el canje se rechaza sin saldo negativo y los regalos se retiran.
 14. Simular un fallo al insertar una fila de `order_rewards`; reintentar el hook y comprobar que no se vuelve a descontar.
+15. Con Redsys u otra pasarela automática, pagar correctamente y confirmar que el email automático de `processing` muestra `REGALO: CANJEADO`.
+16. Con transferencia bancaria o contra reembolso, crear el pedido en `on-hold` o `pending` y confirmar que el email inicial muestra `REGALO: PENDIENTE DE PAGO` y no existe transacción `redeemed`.
+17. Marcar el pedido manual como pagado/`processing` y confirmar que el primer email de estado pagado ya muestra `REGALO: CANJEADO`.
+18. Reejecutar los hooks `woocommerce_payment_complete`, `woocommerce_order_payment_status_changed`, `woocommerce_order_status_processing`, `woocommerce_order_status_completed` y las transiciones a `processing/completed`; confirmar una sola transacción `redeemed_order:{order_id}` y una sola fila por `redeemed_order:{order_id}:reward:{reward_id}`.
 
 Alcance: estas pruebas corresponden al checkout clásico. Checkout Blocks queda pendiente.
 
@@ -257,6 +263,8 @@ La suite unitaria cubre servicios aislados. Siguen siendo necesarias pruebas de 
 9. Crear un pedido impagado con reward y confirmar `_lcter_wcpl_reward_state=reward_selected` en pedido e item, `REGALO: PENDIENTE DE PAGO` y el aviso administrativo de no preparacion.
 10. Completar el pago y confirmar que, solo tras transaccion y trazabilidad correctas, pedido e item cambian a `reward_redeemed` y `REGALO: CANJEADO`.
 11. Simular `processing_error` y confirmar que el estado permanece `reward_selected`; rechazar el canje y confirmar que las lineas se retiran y el estado del pedido se elimina.
+12. Pagar con Redsys, PayPal, Stripe o una pasarela equivalente que cambie directamente a `processing`/`completed`; confirmar en el email automático que el item ya incluye `REGALO: CANJEADO` sin reenvío manual.
+13. Pagar con transferencia bancaria, contra reembolso o método equivalente que deje el pedido en `pending`/`on-hold`; confirmar que no se descuenta saldo y el item permanece como `REGALO: PENDIENTE DE PAGO` hasta el cambio posterior a estado pagado.
 
 ## Pruebas Manuales De Fase 6
 

@@ -48,11 +48,17 @@ class WooCommerce_Checkout_Adapter {
 		add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'add_order_item_metadata' ), 10, 4 );
 		add_action( 'woocommerce_checkout_create_order', array( $this, 'add_order_metadata' ), 10, 2 );
 
-		// Redemption must run before points from the current order are awarded at priority 10.
-		add_action( 'woocommerce_payment_complete', array( $this, 'process_paid_order' ), 5, 1 );
-		add_action( 'woocommerce_order_payment_status_changed', array( $this, 'process_paid_order' ), 5, 1 );
-		add_action( 'woocommerce_order_status_processing', array( $this, 'process_paid_order' ), 5, 1 );
-		add_action( 'woocommerce_order_status_completed', array( $this, 'process_paid_order' ), 5, 1 );
+		// Redemption must run before WooCommerce transactional emails and before points are awarded at priority 10.
+		add_action( 'woocommerce_payment_complete', array( $this, 'process_paid_order' ), 1, 1 );
+		add_action( 'woocommerce_order_payment_status_changed', array( $this, 'process_paid_order' ), 1, 1 );
+		add_action( 'woocommerce_order_status_pending_to_processing', array( $this, 'process_paid_order' ), 1, 1 );
+		add_action( 'woocommerce_order_status_on-hold_to_processing', array( $this, 'process_paid_order' ), 1, 1 );
+		add_action( 'woocommerce_order_status_failed_to_processing', array( $this, 'process_paid_order' ), 1, 1 );
+		add_action( 'woocommerce_order_status_pending_to_completed', array( $this, 'process_paid_order' ), 1, 1 );
+		add_action( 'woocommerce_order_status_on-hold_to_completed', array( $this, 'process_paid_order' ), 1, 1 );
+		add_action( 'woocommerce_order_status_failed_to_completed', array( $this, 'process_paid_order' ), 1, 1 );
+		add_action( 'woocommerce_order_status_processing', array( $this, 'process_paid_order' ), 1, 1 );
+		add_action( 'woocommerce_order_status_completed', array( $this, 'process_paid_order' ), 1, 1 );
 	}
 
 	public function render_reward_selector(): void {

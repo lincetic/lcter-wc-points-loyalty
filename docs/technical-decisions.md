@@ -215,15 +215,18 @@ Motivo:
 
 Decisión: el checkout valida y guarda la selección, pero los puntos se descuentan únicamente cuando `WC_Order::is_paid()` es verdadero.
 
-Los hooks de canje usan prioridad 5 y la acumulación del pedido prioridad 10.
+Los hooks de canje usan prioridad 1 y la acumulación del pedido prioridad 10.
 
 Motivo:
 
 * Un pedido abandonado o impagado no consume saldo.
 * El pedido actual no puede financiar su propio canje.
 * El saldo y el catálogo se revalidan inmediatamente antes del descuento.
+* El canje debe completarse antes de que WooCommerce construya los emails automáticos de pedido en procesando o completado.
 
 No se reserva saldo entre creación y pago. Esta política queda como pregunta abierta para métodos de pago diferidos.
+
+El canje escucha `woocommerce_payment_complete`, `woocommerce_order_payment_status_changed`, `woocommerce_order_status_processing`, `woocommerce_order_status_completed` y las transiciones pagadas `pending/on-hold/failed -> processing/completed`. Las transiciones concretas se registran con prioridad 1 para adelantarse a las notificaciones transaccionales de WooCommerce que las pasarelas como Redsys pueden disparar durante el cambio de estado. La comprobación de `WC_Order::is_paid()` mantiene los pedidos `pending` u `on-hold` como `REGALO: PENDIENTE DE PAGO` hasta que realmente pasen a un estado pagado.
 
 ## TD-020 - Idempotencia Y Recuperación Del Canje
 
