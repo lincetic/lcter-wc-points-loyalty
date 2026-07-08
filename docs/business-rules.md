@@ -119,6 +119,8 @@ Tipos previstos:
 * manual_adjustment
 * refund
 * cancelled
+* failed
+* returned_redeemed
 
 ## BR-017 - Ajuste manual administrativo
 
@@ -127,3 +129,21 @@ Un usuario con capacidad `manage_woocommerce` puede sumar o restar manualmente u
 El ajuste requiere un motivo no vacío, nunca puede dejar saldo negativo y debe crear una transacción `manual_adjustment` con delta firmado, `balance_before`, `balance_after`, `description` y `created_by`.
 
 Los ajustes manuales modifican `balance`, pero no los acumulados históricos brutos `total_earned` ni `total_redeemed`.
+
+## BR-018 - Estados Terminales De Pedido
+
+Cuando un pedido pagado pasa a `cancelled`, `refunded` o `failed`, el plugin debe revertir los puntos ganados si existe una transacción `earned`, devolver los puntos gastados en regalos si existe una transacción `redeemed`, mantener idempotencia y no crear movimientos si el pedido nunca llegó a generar o descontar puntos.
+
+La devolución de puntos canjeados incrementa `balance`, crea una transacción `returned_redeemed` y no modifica los acumulados históricos brutos.
+
+## BR-019 - Estado Visual De Regalos
+
+El texto visible de `REGALO` debe derivarse del estado actual de WooCommerce:
+
+* `pending`, `pending_payment` y `on-hold`: `PENDIENTE DE PAGO`
+* `processing` y `completed`: `CANJEADO`
+* `cancelled`: `CANCELADO`
+* `refunded`: `REEMBOLSADO`
+* `failed`: `FALLIDO`
+
+No se usa el texto `REVERTIDO`.

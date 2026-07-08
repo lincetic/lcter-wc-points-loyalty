@@ -114,3 +114,25 @@ Actor: administración con `manage_woocommerce` y permiso para editar el usuario
 5. En una única transacción atómica actualiza el saldo y crea `type=manual_adjustment` con saldos anterior y posterior, motivo y administrador responsable.
 
 Reglas: BR-008, BR-016, BR-017.
+
+## UC-011 - Cerrar Pedido Pagado Con Regalos
+
+Actor: WooCommerce o administración.
+
+1. Un pedido pagado llega a `cancelled`, `refunded` o `failed`.
+2. El plugin sincroniza el estado visual de los regalos antes de los emails automáticos.
+3. Si el pedido generó puntos, registra la reversión idempotente correspondiente.
+4. Si el pedido descontó puntos por regalos, devuelve esos puntos con una transacción `returned_redeemed`.
+5. Repetir el mismo evento o pasar posteriormente de `cancelled` a `refunded` no duplica saldo ni transacciones.
+
+Reglas: BR-008, BR-016, BR-018, BR-019.
+
+## UC-012 - Cancelar Pedido No Pagado Con Regalos Seleccionados
+
+Actor: WooCommerce o administración.
+
+1. Un pedido con regalo seleccionado se cancela antes del pago.
+2. El plugin no revierte puntos ganados ni devuelve puntos canjeados porque no existieron esas transacciones.
+3. El regalo se muestra como `REGALO: CANCELADO`.
+
+Reglas: BR-008, BR-018, BR-019.

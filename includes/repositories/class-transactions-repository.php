@@ -79,6 +79,25 @@ class Transactions_Repository {
 		);
 	}
 
+	public function find_first_for_order_and_type( int $order_id, string $type ): ?array {
+		global $wpdb;
+
+		if ( $order_id <= 0 || '' === $type ) {
+			return null;
+		}
+
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				'SELECT * FROM ' . $this->table_name() . ' WHERE order_id = %d AND type = %s ORDER BY created_at ASC, id ASC LIMIT 1',
+				$order_id,
+				$type
+			),
+			ARRAY_A
+		);
+
+		return is_array( $row ) ? $row : null;
+	}
+
 	/**
 	 * Insert an immutable balance transaction.
 	 *

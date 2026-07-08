@@ -39,8 +39,10 @@ class WooCommerce_Orders_Adapter {
 		add_action( 'woocommerce_order_payment_status_changed', array( $this, 'on_order_paid' ), 10, 1 );
 		add_action( 'woocommerce_order_status_processing', array( $this, 'on_order_paid' ), 10, 1 );
 		add_action( 'woocommerce_order_status_completed', array( $this, 'on_order_paid' ), 10, 1 );
-		add_action( 'woocommerce_order_status_cancelled', array( $this, 'on_order_cancelled' ), 10, 1 );
-		add_action( 'woocommerce_order_fully_refunded', array( $this, 'on_order_fully_refunded' ), 10, 2 );
+		add_action( 'woocommerce_order_status_cancelled', array( $this, 'on_order_cancelled' ), 1, 1 );
+		add_action( 'woocommerce_order_status_refunded', array( $this, 'on_order_refunded' ), 1, 1 );
+		add_action( 'woocommerce_order_status_failed', array( $this, 'on_order_failed' ), 1, 1 );
+		add_action( 'woocommerce_order_fully_refunded', array( $this, 'on_order_fully_refunded' ), 1, 2 );
 	}
 
 	public function on_order_paid( int $order_id ): void {
@@ -90,14 +92,22 @@ class WooCommerce_Orders_Adapter {
 	 * Reverse earned points when an order is cancelled.
 	 */
 	public function on_order_cancelled( int $order_id ): void {
-		$this->process_order_reversal( $order_id, 'order_cancelled' );
+		$this->process_order_terminal_status( $order_id, 'order_cancelled', 'cancelled' );
 	}
 
 	/**
 	 * Reverse earned points when WooCommerce marks a fully refunded order.
 	 */
 	public function on_order_fully_refunded( int $order_id, int $refund_id ): void {
-		$this->process_order_reversal( $order_id, 'order_fully_refunded', array( 'refund_id' => $refund_id ) );
+		$this->process_order_terminal_status( $order_id, 'order_fully_refunded', 'refunded', array( 'refund_id' => $refund_id ) );
+	}
+
+	public function on_order_refunded( int $order_id ): void {
+		$this->process_order_terminal_status( $order_id, 'order_refunded', 'refunded' );
+	}
+
+	public function on_order_failed( int $order_id ): void {
+		$this->process_order_terminal_status( $order_id, 'order_failed', 'failed' );
 	}
 
 	/**
@@ -169,6 +179,82 @@ class WooCommerce_Orders_Adapter {
 			__( 'No se pudieron revertir los puntos del pedido. Revisión operativa necesaria antes de cerrar la cancelación o reembolso.', LCTER_WCPL_TEXT_DOMAIN )
 		);
 		$order->save();
+	}
+
+	private function process_order_terminal_status( int $order_id, string $trigger, string $woocommerce_status, array $context = array() ): void {
+		$order = wc_get_order( $order_id );
+		if ( ! $order ) {
+			return;
+		}
+
+		WooCommerce_Checkout_Adapter::sync_order_reward_visual_state( $order, false, $woocommerce_status );
+
+		$context['woocommerce_status'] = $woocommerce_status;
+		$return_result                 = $this->cancellation_service->return_redeemed_order( (int) $order->get_customer_id(), $order_id, $trigger, $context );
+		if ( 'returned' === $return_result['status'] ) {
+			$order->add_order_note(
+				sprintf(
+					__( 'Se han devuelto %s puntos canjeados en regalos de este pedido.', LCTER_WCPL_TEXT_DOMAIN ),
+					number_format_i18n( (int) $return_result['points'] )
+				)
+			);
+		}
+
+		if ( 'processing_error' === $return_result['status'] ) {
+			$order->update_meta_data( '_lcter_wcpl_reward_return_status', 'processing_error' );
+			$order->update_meta_data( '_lcter_wcpl_reward_return_error', $return_result['error'] );
+			$order->update_meta_data( '_lcter_wcpl_reward_return_error_at', current_time( 'mysql' ) );
+			$order->add_order_note( __( 'No se pudieron devolver los puntos canjeados en regalos. Revision operativa necesaria.', LCTER_WCPL_TEXT_DOMAIN ) );
+		} elseif ( in_array( $return_result['status'], array( 'returned', 'duplicate' ), true ) ) {
+			$order->update_meta_data( '_lcter_wcpl_reward_return_status', 'completed' );
+			$order->delete_meta_data( '_lcter_wcpl_reward_return_error' );
+			$order->delete_meta_data( '_lcter_wcpl_reward_return_error_at' );
+		}
+
+		$earned_result = $this->cancellation_service->reverse_order( (int) $order->get_customer_id(), $order_id, $trigger, $context );
+		$this->persist_earned_reversal_result( $order, $trigger, $context, $earned_result );
+		$order->save();
+	}
+
+	private function persist_earned_reversal_result( $order, string $trigger, array $context, array $result ): void {
+		if ( 'skipped' === $result['status'] ) {
+			$order->update_meta_data( self::ORDER_POINTS_CANCELLATION_STATUS_META, 'skipped' );
+			$order->update_meta_data( self::ORDER_POINTS_CANCELLATION_ERROR_META, $result['error'] );
+			$order->delete_meta_data( self::ORDER_POINTS_CANCELLATION_ERROR_AT_META );
+			$order->delete_meta_data( self::ORDER_POINTS_CANCELLATION_PENDING_META );
+			$order->delete_meta_data( self::ORDER_POINTS_CANCELLATION_TRIGGER_META );
+			$order->delete_meta_data( self::ORDER_POINTS_CANCELLATION_CONTEXT_META );
+			return;
+		}
+
+		if ( in_array( $result['status'], array( 'reversed', 'duplicate' ), true ) ) {
+			$order->update_meta_data( self::ORDER_POINTS_CANCELLATION_STATUS_META, 'completed' );
+			$order->delete_meta_data( self::ORDER_POINTS_CANCELLATION_ERROR_META );
+			$order->delete_meta_data( self::ORDER_POINTS_CANCELLATION_ERROR_AT_META );
+			$order->delete_meta_data( self::ORDER_POINTS_CANCELLATION_PENDING_META );
+			$order->delete_meta_data( self::ORDER_POINTS_CANCELLATION_TRIGGER_META );
+			$order->delete_meta_data( self::ORDER_POINTS_CANCELLATION_CONTEXT_META );
+			$order->update_meta_data( '_lcter_wcpl_points_cancelled', (int) $result['points'] );
+			if ( 'reversed' === $result['status'] ) {
+				$order->add_order_note(
+					sprintf(
+						__( 'Se han revertido %s puntos generados por este pedido.', LCTER_WCPL_TEXT_DOMAIN ),
+						number_format_i18n( (int) $result['points'] )
+					)
+				);
+			}
+			return;
+		}
+
+		$order->update_meta_data( self::ORDER_POINTS_CANCELLATION_STATUS_META, 'processing_error' );
+		$order->update_meta_data( self::ORDER_POINTS_CANCELLATION_ERROR_META, $result['error'] );
+		$order->update_meta_data( self::ORDER_POINTS_CANCELLATION_ERROR_AT_META, current_time( 'mysql' ) );
+		$order->update_meta_data( self::ORDER_POINTS_CANCELLATION_PENDING_META, (int) $result['points'] );
+		$order->update_meta_data( self::ORDER_POINTS_CANCELLATION_TRIGGER_META, $trigger );
+		$order->update_meta_data( self::ORDER_POINTS_CANCELLATION_CONTEXT_META, $context );
+		$order->add_order_note(
+			__( 'No se pudieron revertir los puntos del pedido. Revision operativa necesaria antes de cerrar la cancelacion o reembolso.', LCTER_WCPL_TEXT_DOMAIN )
+		);
 	}
 
 	/**

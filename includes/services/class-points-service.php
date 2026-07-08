@@ -54,6 +54,10 @@ class Points_Service {
 		return $this->transactions->get_points_for_order_and_type( $order_id, $type );
 	}
 
+	public function get_order_transaction( int $order_id, string $type ): ?array {
+		return $this->transactions->find_first_for_order_and_type( $order_id, $type );
+	}
+
 	/**
 	 * Add points and the corresponding audit transaction atomically.
 	 */
@@ -336,7 +340,10 @@ class Points_Service {
 		int $points,
 		int $order_id,
 		string $reason,
-		$metadata = null
+		$metadata = null,
+		string $idempotency_key = '',
+		string $transaction_type = Database::TRANSACTION_CANCELLED,
+		string $source = 'woocommerce_order_cancellation'
 	): string {
 		if ( $customer_id <= 0 || $points <= 0 || $order_id <= 0 ) {
 			return self::RESULT_FAILED;
@@ -352,10 +359,12 @@ class Points_Service {
 				throw new \RuntimeException( 'Could not lock the customer balance.' );
 			}
 
-			$idempotency_key = 'cancelled_order:' . $order_id;
+			$idempotency_key = '' !== $idempotency_key ? $idempotency_key : 'cancelled_order:' . $order_id;
 			if (
 				$this->transactions->exists_by_idempotency_key( $idempotency_key ) ||
-				$this->transactions->exists_for_order_and_type( $order_id, Database::TRANSACTION_CANCELLED )
+				$this->transactions->exists_for_order_and_type( $order_id, Database::TRANSACTION_CANCELLED ) ||
+				$this->transactions->exists_for_order_and_type( $order_id, Database::TRANSACTION_REFUND ) ||
+				$this->transactions->exists_for_order_and_type( $order_id, Database::TRANSACTION_FAILED )
 			) {
 				if ( ! $this->transaction_manager->commit() ) {
 					throw new \RuntimeException( 'Could not commit the cancelled order duplicate check.' );
@@ -379,11 +388,11 @@ class Points_Service {
 					'customer_id'     => $customer_id,
 					'order_id'        => $order_id,
 					'order_item_id'   => null,
-					'type'            => Database::TRANSACTION_CANCELLED,
+					'type'            => $transaction_type,
 					'points'          => -1 * $points,
 					'balance_before'  => $balance_before,
 					'balance_after'   => $balance_after,
-					'source'          => 'woocommerce_order_cancellation',
+					'source'          => $source,
 					'description'     => $reason,
 					'metadata'        => $metadata,
 					'idempotency_key' => $idempotency_key,
@@ -394,6 +403,83 @@ class Points_Service {
 
 			if ( ! $this->transaction_manager->commit() ) {
 				throw new \RuntimeException( 'Could not commit the cancelled order transaction.' );
+			}
+
+			return self::RESULT_ADDED;
+		} catch ( \Throwable $exception ) {
+			$this->transaction_manager->rollback();
+			return self::RESULT_FAILED;
+		}
+	}
+
+	public function return_order_redeemed_points(
+		int $customer_id,
+		int $points,
+		int $order_id,
+		string $woocommerce_status,
+		string $trigger,
+		$metadata = null
+	): string {
+		if ( $customer_id <= 0 || $points <= 0 || $order_id <= 0 || '' === $woocommerce_status ) {
+			return self::RESULT_FAILED;
+		}
+
+		if ( ! $this->transaction_manager->begin() ) {
+			return self::RESULT_FAILED;
+		}
+
+		try {
+			$balance_before = $this->points->lock_balance( $customer_id );
+			if ( null === $balance_before ) {
+				throw new \RuntimeException( 'Could not lock the customer balance.' );
+			}
+
+			$status_key      = strtolower( preg_replace( '/[^a-z0-9_\-]/', '', $woocommerce_status ) ?? '' );
+			$idempotency_key = 'returned_redeemed_order:' . $order_id . ':' . $status_key;
+			if (
+				$this->transactions->exists_by_idempotency_key( $idempotency_key ) ||
+				$this->transactions->exists_for_order_and_type( $order_id, Database::TRANSACTION_RETURNED_REDEEMED )
+			) {
+				if ( ! $this->transaction_manager->commit() ) {
+					throw new \RuntimeException( 'Could not commit the returned redeemed duplicate check.' );
+				}
+
+				return self::RESULT_DUPLICATE;
+			}
+
+			$balance_after = $balance_before + $points;
+			if ( ! $this->points->adjust( $customer_id, $points ) ) {
+				throw new \RuntimeException( 'Could not return redeemed points to the customer balance.' );
+			}
+
+			$original = $this->get_order_transaction( $order_id, Database::TRANSACTION_REDEEMED );
+			if ( is_array( $metadata ) ) {
+				$metadata['original_redeemed_transaction'] = $original;
+				$metadata['points_returned']                = $points;
+				$metadata['woocommerce_status']             = $woocommerce_status;
+				$metadata['trigger']                        = $trigger;
+			}
+
+			if ( ! $this->transactions->insert(
+				array(
+					'customer_id'     => $customer_id,
+					'order_id'        => $order_id,
+					'order_item_id'   => null,
+					'type'            => Database::TRANSACTION_RETURNED_REDEEMED,
+					'points'          => $points,
+					'balance_before'  => $balance_before,
+					'balance_after'   => $balance_after,
+					'source'          => 'woocommerce_reward_return',
+					'description'     => sprintf( 'DevoluciÃ³n de puntos canjeados del pedido #%d por %s.', $order_id, $trigger ),
+					'metadata'        => $metadata,
+					'idempotency_key' => $idempotency_key,
+				)
+			) ) {
+				throw new \RuntimeException( 'Could not insert the returned redeemed transaction.' );
+			}
+
+			if ( ! $this->transaction_manager->commit() ) {
+				throw new \RuntimeException( 'Could not commit the returned redeemed transaction.' );
 			}
 
 			return self::RESULT_ADDED;

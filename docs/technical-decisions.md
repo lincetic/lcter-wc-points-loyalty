@@ -259,7 +259,7 @@ PHPStan comienza en nivel 5; PHPCS aplica `WordPress`, `WordPress-Extra` y `Word
 
 El flujo soportado sigue siendo `WooCommerce_Checkout_Adapter` junto con `Reward_Redemption_Service`.
 
-Los regalos creados durante checkout tienen `_lcter_wcpl_reward_state=reward_selected` en pedido y order item. En ese estado el metadato visible indica `REGALO: PENDIENTE DE PAGO` y administracion muestra que no deben prepararse ni entregarse. Solo despues de completar descuento y `order_rewards` el estado cambia a `reward_redeemed` y el item muestra `REGALO: CANJEADO`. Si el canje falla, permanece seleccionado; si se rechaza y se retiran las lineas, el estado se elimina.
+Los regalos creados durante checkout tienen `_lcter_wcpl_reward_state=reward_selected` en pedido y order item. El texto visible `REGALO` se deriva del estado WooCommerce: pendiente/on-hold muestra `PENDIENTE DE PAGO`, processing/completed muestra `CANJEADO`, cancelled muestra `CANCELADO`, refunded muestra `REEMBOLSADO` y failed muestra `FALLIDO`. El filtro de metadatos formateados de order item recalcula el texto para emails y vistas aunque un valor antiguo hubiera quedado persistido. Los metadatos internos mínimos son `reward_selected`, `reward_redeemed`, `reward_cancelled`, `reward_refunded` y `reward_failed`.
 
 ## TD-022 - Servicio De Trazabilidad Neutral
 
@@ -286,13 +286,15 @@ El resumen se guarda temporalmente por administrador y muestra procesados, bonif
 
 ## TD-024 - Reversion Total Por Cancelacion O Reembolso Completo
 
-Decision: `woocommerce_order_status_cancelled` y `woocommerce_order_fully_refunded` revierten todos los puntos de la transaccion `earned` del pedido. Ambos casos generan una transaccion `cancelled` con clave `cancelled_order:{order_id}`; el segundo hook corresponde exclusivamente a reembolso total y aporta tambien `refund_id` a la metadata.
+Decision: `woocommerce_order_status_cancelled`, `woocommerce_order_status_refunded`, `woocommerce_order_status_failed` y `woocommerce_order_fully_refunded` se procesan con prioridad 1 para que los emails automaticos ya vean el estado visual terminal del regalo. Si existe transaccion `earned`, se revierten todos los puntos ganados del pedido. Cada estado usa una clave clara: `cancelled_order:{order_id}`, `refunded_order:{order_id}` o `failed_order:{order_id}`. Los tipos de transaccion son `cancelled`, `refund` y `failed`.
 
 La transaccion `earned` es la fuente de verdad para el importe. El metadato `_lcter_wcpl_points_awarded` no autoriza por si solo una reversion. La operacion bloquea el saldo, registra `balance_before` y `balance_after` y no permite saldo negativo.
 
-Si el cliente ya no conserva saldo suficiente, no se descuenta parcialmente: el pedido queda con `_lcter_wcpl_points_cancellation_status=processing_error`, detalle interno y nota operativa. La repeticion del hook es segura y una reversion completada se reconoce por clave y por `order_id + type`.
+Si existe transaccion `redeemed`, se devuelven los puntos gastados en regalos mediante `returned_redeemed` con clave `returned_redeemed_order:{order_id}:{status}`. Ademas de esa clave, la comprobacion por `order_id + returned_redeemed` evita devolver dos veces si un pedido pasa de `cancelled` a `refunded` o `failed`.
 
-`total_earned` se mantiene como acumulado historico bruto y no se reduce; `total_redeemed` tampoco cambia. El neto se obtiene del historial incluyendo movimientos `cancelled`. Reembolsos parciales, restauracion de regalos canjeados y reapertura posterior del pedido quedan fuera de esta decision.
+Si el cliente ya no conserva saldo suficiente para revertir puntos ganados, no se descuenta parcialmente: el pedido queda con `_lcter_wcpl_points_cancellation_status=processing_error`, detalle interno y nota operativa. La devolucion de puntos canjeados puede incrementar saldo y se intenta antes de la reversion de puntos ganados.
+
+`total_earned` se mantiene como acumulado historico bruto y no se reduce; `total_redeemed` tampoco cambia. El neto se obtiene del historial incluyendo movimientos `cancelled`, `refund`, `failed` y `returned_redeemed`. Reembolsos parciales y reapertura posterior del pedido quedan fuera de esta decision.
 
 ## TD-025 - Recuperacion Manual De Errores De Pedido
 

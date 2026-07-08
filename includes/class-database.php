@@ -31,6 +31,8 @@ class Database {
 	const TRANSACTION_MANUAL_ADJUSTMENT = 'manual_adjustment';
 	const TRANSACTION_REFUND            = 'refund';
 	const TRANSACTION_CANCELLED         = 'cancelled';
+	const TRANSACTION_FAILED            = 'failed';
+	const TRANSACTION_RETURNED_REDEEMED = 'returned_redeemed';
 
 	/**
 	 * Get a trusted plugin table name.

@@ -96,6 +96,31 @@ final class PointsServiceTest extends TestCase {
 		self::assertCount( 0, $transactions->rows );
 	}
 
+	public function test_returned_redeemed_points_are_idempotent_across_terminal_statuses(): void {
+		$balances     = new In_Memory_Customer_Points_Repository( 600 );
+		$transactions = new In_Memory_Transactions_Repository();
+		$service      = new Points_Service( $balances, $transactions, new In_Memory_Transaction_Manager() );
+
+		self::assertTrue( $service->redeem_points( 7, 400, 103, null, 'Redeemed.', null, 'redeemed_order:103' ) );
+		self::assertSame( 200, $service->get_balance( 7 ) );
+		self::assertSame(
+			Points_Service::RESULT_ADDED,
+			$service->return_order_redeemed_points( 7, 400, 103, 'cancelled', 'order_cancelled', array( 'woocommerce_status' => 'cancelled' ) )
+		);
+		self::assertSame( 600, $service->get_balance( 7 ) );
+		self::assertSame(
+			Points_Service::RESULT_DUPLICATE,
+			$service->return_order_redeemed_points( 7, 400, 103, 'refunded', 'order_refunded', array( 'woocommerce_status' => 'refunded' ) )
+		);
+		self::assertSame( 600, $service->get_balance( 7 ) );
+		self::assertCount( 2, $transactions->rows );
+		self::assertSame( 'returned_redeemed', $transactions->rows[1]['type'] );
+		self::assertSame( 400, $transactions->rows[1]['points'] );
+		self::assertSame( 200, $transactions->rows[1]['balance_before'] );
+		self::assertSame( 600, $transactions->rows[1]['balance_after'] );
+		self::assertSame( 'returned_redeemed_order:103:cancelled', $transactions->rows[1]['idempotency_key'] );
+	}
+
 	public function test_manual_adjustment_records_signed_delta_and_balances(): void {
 		$balances     = new In_Memory_Customer_Points_Repository( 1000 );
 		$transactions = new In_Memory_Transactions_Repository();
@@ -207,6 +232,15 @@ final class In_Memory_Transactions_Repository extends Transactions_Repository {
 	public function insert( array $transaction ): bool {
 		$this->rows[] = $transaction;
 		return true;
+	}
+
+	public function find_first_for_order_and_type( int $order_id, string $type ): ?array {
+		foreach ( $this->rows as $row ) {
+			if ( $order_id === (int) $row['order_id'] && $type === $row['type'] ) {
+				return $row;
+			}
+		}
+		return null;
 	}
 }
 

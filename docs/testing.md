@@ -235,8 +235,8 @@ Configuracion inicial disponible:
 * `phpcs.xml.dist`: reglas WordPress, WordPress-Extra y WordPress-Docs.
 * `tests/Unit/PointsServiceTest.php`: saldo negativo, saldos anterior/posterior e idempotencia de `earned_order` y `redeemed_order`.
 * `tests/Unit/InitialBonusServiceTest.php`: importe, tipo, clave idempotente y resumen de ejecuciones repetidas.
-* `tests/Unit/OrderCancellationServiceTest.php`: deteccion de acumulacion, reversion total y error por saldo insuficiente.
-* `tests/Unit/PointsServiceTest.php`: tambien cubre atomicidad, saldos e idempotencia de `cancelled_order`.
+* `tests/Unit/OrderCancellationServiceTest.php`: deteccion de acumulacion, reversion total, tipos por estado y devolucion de puntos canjeados.
+* `tests/Unit/PointsServiceTest.php`: tambien cubre atomicidad, saldos e idempotencia de `cancelled_order` y `returned_redeemed_order`.
 
 Comandos desde la raiz del plugin:
 
@@ -310,7 +310,7 @@ Casos manuales de integración:
 5. Intentar enviar importe sin motivo, motivo sin importe, decimal o cero y comprobar que WordPress no procesa el ajuste.
 6. Confirmar que un usuario sin `manage_woocommerce` no ve ni puede ejecutar el ajuste.
 7. Confirmar que `total_earned` y `total_redeemed` no cambian.
-## Pruebas Manuales De Cancelacion Y Reembolso Total
+## Pruebas Manuales De Cancelacion, Fallo Y Reembolso Total
 
 1. Pagar un pedido registrado, confirmar su transaccion `earned` y anotar puntos y saldo.
 2. Cambiarlo a `cancelled`; confirmar una transaccion `cancelled` negativa por el mismo importe, clave `cancelled_order:{order_id}` y saldos anterior/posterior correctos.
@@ -322,6 +322,13 @@ Casos manuales de integración:
 8. Corregir el saldo y reejecutar el hook; confirmar que la reversion se completa una sola vez.
 9. Verificar `source=woocommerce_order_cancellation`, trigger en metadata y `order_id` correcto.
 10. Confirmar que `total_earned` permanece como historico bruto y `total_redeemed` no cambia.
+11. Pagar un pedido con regalo canjeado, cancelarlo y confirmar que se crea una sola transaccion `returned_redeemed` con clave `returned_redeemed_order:{order_id}:cancelled`.
+12. Reembolsar totalmente un pedido con regalo canjeado y confirmar `returned_redeemed_order:{order_id}:refunded`.
+13. Cambiar despues de `cancelled` a `refunded` y confirmar que no hay segunda devolucion de puntos canjeados.
+14. Cancelar un pedido `pending`/`on-hold` con regalo seleccionado y confirmar que no hay transacciones nuevas y el regalo muestra `REGALO: CANCELADO`.
+15. Marcar como `failed` un pedido previamente pagado y confirmar `failed_order:{order_id}` si existian puntos ganados y `returned_redeemed_order:{order_id}:failed` si existia canje.
+16. Confirmar que los emails automaticos de cancelacion, reembolso total y fallo muestran `CANCELADO`, `REEMBOLSADO` y `FALLIDO` respectivamente.
+17. Crear un reembolso parcial sin estado total `refunded` y confirmar que esta fase no revierte puntos ni devuelve canjes.
 
 ## Pruebas Manuales De Recuperacion Operativa
 

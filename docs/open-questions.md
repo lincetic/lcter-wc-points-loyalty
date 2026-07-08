@@ -19,6 +19,8 @@ Este documento recoge aspectos no definidos en `AGENTS.md`, `docs/business-rules
 12. ¿Como deben calcularse los puntos a revertir en un reembolso parcial: por importe reembolsado, por lineas, impuestos, cupones y portes?
 13. ¿Que debe ocurrir si un pedido revertido vuelve posteriormente a `processing` o `completed`?
 
+Actualizacion 2026-07-08: para esta fase queda resuelto que en `cancelled`, `refunded` y `failed` se revierten puntos `earned` con transacciones `cancelled`, `refund` o `failed`, y que los puntos de regalos canjeados se devuelven con `returned_redeemed`. Sigue abierta la politica de reapertura posterior a `processing` o `completed` despues de haber revertido o devuelto puntos.
+
 ## Checkout Y Experiencia De Cliente
 
 1. ¿Debe el cliente poder modificar regalos después de crear el pedido?

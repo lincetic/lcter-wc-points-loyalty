@@ -22,6 +22,9 @@ class WooCommerce_Checkout_Adapter {
 	const NONCE_NAME               = 'lcter_wcpl_rewards_nonce';
 	const REWARD_STATE_SELECTED    = 'reward_selected';
 	const REWARD_STATE_REDEEMED    = 'reward_redeemed';
+	const REWARD_STATE_CANCELLED   = 'reward_cancelled';
+	const REWARD_STATE_REFUNDED    = 'reward_refunded';
+	const REWARD_STATE_FAILED      = 'reward_failed';
 	const REDEMPTION_STATUS_META   = '_lcter_wcpl_reward_redemption_status';
 	const REDEMPTION_ERROR_META    = '_lcter_wcpl_reward_redemption_error';
 	const REDEMPTION_ERROR_AT_META = '_lcter_wcpl_reward_redemption_error_at';
@@ -47,6 +50,7 @@ class WooCommerce_Checkout_Adapter {
 		add_filter( 'woocommerce_get_item_data', array( $this, 'display_reward_cart_data' ), 10, 2 );
 		add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'add_order_item_metadata' ), 10, 4 );
 		add_action( 'woocommerce_checkout_create_order', array( $this, 'add_order_metadata' ), 10, 2 );
+		add_filter( 'woocommerce_order_item_get_formatted_meta_data', array( $this, 'derive_reward_item_formatted_meta' ), 10, 2 );
 
 		// Redemption must run before WooCommerce transactional emails and before points are awarded at priority 10.
 		add_action( 'woocommerce_payment_complete', array( $this, 'process_paid_order' ), 1, 1 );
@@ -59,6 +63,11 @@ class WooCommerce_Checkout_Adapter {
 		add_action( 'woocommerce_order_status_failed_to_completed', array( $this, 'process_paid_order' ), 1, 1 );
 		add_action( 'woocommerce_order_status_processing', array( $this, 'process_paid_order' ), 1, 1 );
 		add_action( 'woocommerce_order_status_completed', array( $this, 'process_paid_order' ), 1, 1 );
+		add_action( 'woocommerce_order_status_pending', array( $this, 'sync_reward_visual_state' ), 1, 1 );
+		add_action( 'woocommerce_order_status_on-hold', array( $this, 'sync_reward_visual_state' ), 1, 1 );
+		add_action( 'woocommerce_order_status_cancelled', array( $this, 'sync_reward_visual_state' ), 1, 1 );
+		add_action( 'woocommerce_order_status_refunded', array( $this, 'sync_reward_visual_state' ), 1, 1 );
+		add_action( 'woocommerce_order_status_failed', array( $this, 'sync_reward_visual_state' ), 1, 1 );
 	}
 
 	public function render_reward_selector(): void {
@@ -228,6 +237,28 @@ class WooCommerce_Checkout_Adapter {
 		return $item_data;
 	}
 
+	public function derive_reward_item_formatted_meta( array $formatted_meta, $item ): array {
+		if ( ! is_object( $item ) || '1' !== (string) $item->get_meta( '_lcter_wcpl_is_reward' ) ) {
+			return $formatted_meta;
+		}
+
+		$order_id = method_exists( $item, 'get_order_id' ) ? (int) $item->get_order_id() : 0;
+		$order    = $order_id > 0 ? wc_get_order( $order_id ) : null;
+		if ( ! $order ) {
+			return $formatted_meta;
+		}
+
+		$label = self::get_reward_label_for_order_status( $order->get_status() );
+		foreach ( $formatted_meta as $meta ) {
+			if ( is_object( $meta ) && isset( $meta->key ) && 'REGALO' === (string) $meta->key ) {
+				$meta->value         = $label;
+				$meta->display_value = esc_html( $label );
+			}
+		}
+
+		return $formatted_meta;
+	}
+
 	public function add_order_item_metadata( $item, $cart_item_key, array $values, $order ): void {
 		unset( $cart_item_key, $order );
 
@@ -291,6 +322,13 @@ class WooCommerce_Checkout_Adapter {
 		$order->update_meta_data( '_lcter_wcpl_reward_redemption_status', 'pending_payment' );
 	}
 
+	public function sync_reward_visual_state( int $order_id ): void {
+		$order = wc_get_order( $order_id );
+		if ( $order ) {
+			self::sync_order_reward_visual_state( $order );
+		}
+	}
+
 	public function process_paid_order( int $order_id ): void {
 		$order = wc_get_order( $order_id );
 		if ( ! $order || ! $order->is_paid() || 'completed' === $order->get_meta( '_lcter_wcpl_reward_redemption_status' ) ) {
@@ -339,8 +377,6 @@ class WooCommerce_Checkout_Adapter {
 			$order_item = $order->get_item( (int) $reward_item['order_item_id'] );
 			if ( $order_item && $record_id > 0 ) {
 				$order_item->update_meta_data( '_lcter_wcpl_order_reward_id', $record_id );
-				$order_item->update_meta_data( '_lcter_wcpl_reward_state', self::REWARD_STATE_REDEEMED );
-				$order_item->update_meta_data( 'REGALO', __( 'CANJEADO', LCTER_WCPL_TEXT_DOMAIN ) );
 				$order_item->save();
 			}
 
@@ -354,12 +390,73 @@ class WooCommerce_Checkout_Adapter {
 		}
 
 		$order->update_meta_data( '_lcter_wcpl_order_rewards', $trace );
-		$order->update_meta_data( '_lcter_wcpl_reward_state', self::REWARD_STATE_REDEEMED );
 		$order->update_meta_data( self::REDEMPTION_STATUS_META, 'completed' );
 		$order->delete_meta_data( self::REDEMPTION_ERROR_META );
 		$order->delete_meta_data( self::REDEMPTION_ERROR_AT_META );
 		$order->add_order_note( __( 'Canje de puntos registrado correctamente.', LCTER_WCPL_TEXT_DOMAIN ) );
+		self::sync_order_reward_visual_state( $order, false );
 		$order->save();
+	}
+
+	public static function sync_order_reward_visual_state( $order, bool $save_order = true, ?string $status = null ): void {
+		if ( ! $order ) {
+			return;
+		}
+
+		$status = $status ?: $order->get_status();
+		$state  = self::get_reward_state_for_order_status( $status );
+		$label  = self::get_reward_label_for_order_status( $status );
+		$has_rewards = false;
+
+		foreach ( $order->get_items( 'line_item' ) as $item ) {
+			if ( '1' !== (string) $item->get_meta( '_lcter_wcpl_is_reward' ) ) {
+				continue;
+			}
+
+			$has_rewards = true;
+			$item->update_meta_data( '_lcter_wcpl_reward_state', $state );
+			$item->update_meta_data( 'REGALO', $label );
+			$item->save();
+		}
+
+		if ( $has_rewards ) {
+			$order->update_meta_data( '_lcter_wcpl_reward_state', $state );
+			if ( $save_order ) {
+				$order->save();
+			}
+		}
+	}
+
+	public static function get_reward_state_for_order_status( string $status ): string {
+		switch ( $status ) {
+			case 'processing':
+			case 'completed':
+				return self::REWARD_STATE_REDEEMED;
+			case 'cancelled':
+				return self::REWARD_STATE_CANCELLED;
+			case 'refunded':
+				return self::REWARD_STATE_REFUNDED;
+			case 'failed':
+				return self::REWARD_STATE_FAILED;
+			default:
+				return self::REWARD_STATE_SELECTED;
+		}
+	}
+
+	public static function get_reward_label_for_order_status( string $status ): string {
+		switch ( $status ) {
+			case 'processing':
+			case 'completed':
+				return __( 'CANJEADO', LCTER_WCPL_TEXT_DOMAIN );
+			case 'cancelled':
+				return __( 'CANCELADO', LCTER_WCPL_TEXT_DOMAIN );
+			case 'refunded':
+				return __( 'REEMBOLSADO', LCTER_WCPL_TEXT_DOMAIN );
+			case 'failed':
+				return __( 'FALLIDO', LCTER_WCPL_TEXT_DOMAIN );
+			default:
+				return __( 'PENDIENTE DE PAGO', LCTER_WCPL_TEXT_DOMAIN );
+		}
 	}
 
 	private function get_eligible_subtotal_cents( $cart ): int {
