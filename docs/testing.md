@@ -236,7 +236,7 @@ Configuracion inicial disponible:
 * `tests/Unit/PointsServiceTest.php`: saldo negativo, saldos anterior/posterior e idempotencia de `earned_order` y `redeemed_order`.
 * `tests/Unit/InitialBonusServiceTest.php`: importe, tipo, clave idempotente y resumen de ejecuciones repetidas.
 * `tests/Unit/OrderCancellationServiceTest.php`: deteccion de acumulacion, reversion total, tipos por estado y devolucion de puntos canjeados.
-* `tests/Unit/PointsServiceTest.php`: tambien cubre atomicidad, saldos e idempotencia de `cancelled_order` y `returned_redeemed_order`.
+* `tests/Unit/PointsServiceTest.php`: tambien cubre atomicidad, saldos e idempotencia de `reversed_earned_order` y `returned_redeemed_order`.
 
 Comandos desde la raiz del plugin:
 
@@ -340,6 +340,40 @@ Casos manuales de integración:
 6. Enviar el formulario sin `manage_woocommerce`, con nonce invalido, pedido distinto u operacion manipulada; confirmar que no se ejecuta ningun servicio.
 7. Abrir un error antiguo sin fecha o codigo detallado y confirmar que la seccion usa mensajes de reserva sin salida insegura.
 8. Repetir un formulario ya usado despues de completar la operacion y confirmar que la comprobacion de estado impide otra ejecucion.
+
+## Pruebas Manuales De Reapertura Y Restauracion
+
+1. Pagar un pedido con puntos ganados y regalos canjeados; confirmar `earned_order:{order_id}` y `redeemed_order:{order_id}`.
+2. Cambiar `processing -> cancelled`; confirmar transacciones de reversion/devolucion, `_lcter_wcpl_loyalty_movements_state=loyalty_movements_reversed` y regalo `REGALO: CANCELADO`.
+3. Cambiar `cancelled -> processing`; confirmar que no se crean `earned` ni `redeemed` nuevos, que aparece la advertencia administrativa y que el regalo muestra `REGALO: PENDIENTE DE RESTAURAR PUNTOS`.
+4. Ejecutar "Restaurar movimientos de fidelizacion" con saldo suficiente; confirmar `restored_earned`, `restored_redeemed`, saldos anterior/posterior, `created_by`, nota del pedido, estado `loyalty_movements_restored` y regalo `REGALO: CANJEADO`.
+5. Repetir la restauracion; confirmar que no se duplican movimientos por `restored_order:{order_id}:cycle:{new_cycle}`.
+6. Repetir el flujo reduciendo antes el saldo hasta que `projected_balance = current_balance + restored_earned_points - restored_redeemed_points` sea negativo; confirmar que no se crea ninguna transaccion de restauracion, el ciclo no avanza, el estado queda `loyalty_restore_error` y se muestran saldo actual, saldo proyectado y puntos faltantes.
+7. Repetir con `refunded -> processing`; confirmar que no restaura automaticamente.
+8. Alternar varias veces entre `cancelled`, `refunded`, `failed`, `processing` y `completed`; confirmar que el historial conserva movimientos originales, reversion y eventual restauracion sin duplicados.
+9. Enviar la accion sin `manage_woocommerce`, con nonce invalido o pedido no pagado; confirmar que no se ejecuta el servicio.
+10. Confirmar que la restauracion no cambia pagos, reembolsos ni dispara correos adicionales propios del plugin.
+
+Casos unitarios automatizados:
+
+* `PointsServiceTest`: `processing -> cancelled cycle 1 -> processing -> restore cycle 2 -> cancelled/refunded cycle 2`, repeticion de estados terminales dentro del mismo ciclo, restauracion permitida por saldo proyectado positivo, restauracion rechazada por saldo proyectado negativo y compatibilidad con claves terminales legacy sin ciclo.
+* `LoyaltyMovementsRestorationServiceTest`: pedido no pagado, ausencia de movimientos originales, ausencia de reversion, restauracion correcta en ciclo siguiente, restauracion duplicada y saldo insuficiente sin aplicacion parcial.
+
+Casos obligatorios de ciclos:
+
+* A. `processing -> cancelled cycle 1 -> processing -> restore cycle 2 -> cancelled cycle 2`: debe revertir correctamente en ambos ciclos.
+* B. Repetir `cancelled` dentro del mismo ciclo: no debe duplicar movimientos.
+* C. Saldo actual insuficiente para `redeemed` pero suficiente al sumar `restored_earned`: debe permitir restauracion si el saldo final proyectado es no negativo.
+* D. Saldo final proyectado negativo: no debe modificar saldo ni transacciones.
+* E. Pedidos antiguos sin metadata de ciclo: deben operar como ciclo 1.
+
+Casos obligatorios de estados terminales cruzados:
+
+* `processing -> cancelled -> refunded`: una sola `reversed_earned_order:{order_id}:cycle:1` y una sola `returned_redeemed_order:{order_id}:cycle:1`.
+* `processing -> failed -> cancelled`: una sola reversion contable de `earned`.
+* `processing -> cancelled -> processing -> restaurar cycle 2 -> refunded`: una reversion en ciclo 1 y otra valida en ciclo 2.
+* `woocommerce_order_fully_refunded` y `woocommerce_order_status_refunded` para la misma operacion: una sola devolucion y una sola reversion.
+* Los lookups de movimientos por ciclo no deben sumar movimientos de ciclos anteriores.
 
 ## Requisitos De Compatibilidad A Validar
 

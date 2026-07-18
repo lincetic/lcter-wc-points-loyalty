@@ -136,3 +136,32 @@ Actor: WooCommerce o administración.
 3. El regalo se muestra como `REGALO: CANCELADO`.
 
 Reglas: BR-008, BR-018, BR-019.
+
+## UC-013 - Reabrir Pedido Con Movimientos Revertidos
+
+Actor: administraciÃ³n.
+
+1. Un pedido pagado fue cancelado, reembolsado o marcado como fallido y el plugin revirtiÃ³ sus movimientos.
+2. AdministraciÃ³n cambia el pedido a `processing` o `completed`.
+3. WooCommerce muestra el pedido como pagado.
+4. El plugin no otorga puntos ganados ni descuenta de nuevo puntos de regalos.
+5. El pedido conserva `_lcter_wcpl_loyalty_movements_state=loyalty_movements_reversed`.
+6. La ediciÃ³n del pedido muestra la advertencia de restauraciÃ³n pendiente.
+7. Los regalos se muestran como `REGALO: PENDIENTE DE RESTAURAR PUNTOS`.
+
+Reglas: BR-019, BR-020, BR-021.
+
+## UC-014 - Restaurar Movimientos De FidelizaciÃ³n
+
+Actor: administraciÃ³n con `manage_woocommerce`.
+
+1. AdministraciÃ³n abre un pedido pagado con movimientos revertidos.
+2. Pulsa "Restaurar movimientos de fidelizaciÃ³n".
+3. WordPress valida nonce y capacidad.
+4. El servicio comprueba pedido pagado, movimientos originales, reversiÃ³n y ausencia de restauraciÃ³n.
+5. Si el saldo alcanza para descontar de nuevo los regalos, se crean `restored_earned` y `restored_redeemed` de forma atÃ³mica.
+6. El pedido pasa a `loyalty_movements_restored`, aÃ±ade nota operativa y los regalos vuelven a `REGALO: CANJEADO`.
+7. Si el saldo no alcanza, no se crea ningÃºn movimiento, el pedido queda en `loyalty_restore_error` y muestra saldo necesario/disponible.
+8. Repetir la acciÃ³n no duplica movimientos por la clave `restored_order:{order_id}:cycle:{new_cycle}` ni por las claves `restored_earned_order`/`restored_redeemed_order` del mismo ciclo.
+
+Reglas: BR-008, BR-016, BR-020, BR-021, BR-022.

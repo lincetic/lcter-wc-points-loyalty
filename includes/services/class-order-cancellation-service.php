@@ -36,7 +36,8 @@ class Order_Cancellation_Service {
 		}
 
 		$reversal_context = $this->get_reversal_context( $order_id, $trigger, $context );
-		$earned_points    = max( 0, $this->points->get_order_transaction_points( $order_id, Database::TRANSACTION_EARNED ) );
+		$cycle            = (int) $reversal_context['loyalty_cycle'];
+		$earned_points    = $this->points->get_order_earned_points_for_cycle( $order_id, $cycle );
 		if ( 0 === $earned_points ) {
 			return $this->result( 'skipped', 'order_did_not_earn_points', 0 );
 		}
@@ -49,15 +50,21 @@ class Order_Cancellation_Service {
 			array_merge(
 				array(
 					'trigger'                => $trigger,
+					'trigger_hook'           => $trigger,
+					'trigger_status'         => $reversal_context['woocommerce_status'],
+					'cycle'                  => $cycle,
+					'order_id'               => $order_id,
 					'earned_points_reversed' => $earned_points,
-					'earned_idempotency_key' => 'earned_order:' . $order_id,
+					'earned_idempotency_key' => Points_Service::cycle_key( 1 === $cycle ? 'earned_order' : 'restored_earned_order', $order_id, $cycle ),
 					'woocommerce_status'     => $reversal_context['woocommerce_status'],
+					'loyalty_cycle'          => $cycle,
 				),
 				$context
 			),
 			$reversal_context['idempotency_key'],
 			$reversal_context['transaction_type'],
-			$reversal_context['source']
+			$reversal_context['source'],
+			$cycle
 		);
 
 		if ( Points_Service::RESULT_ADDED === $result ) {
@@ -81,7 +88,8 @@ class Order_Cancellation_Service {
 			return $this->result( 'skipped', 'invalid_customer_or_order', 0 );
 		}
 
-		$redeemed_points = abs( min( 0, $this->points->get_order_transaction_points( $order_id, Database::TRANSACTION_REDEEMED ) ) );
+		$cycle           = isset( $context['loyalty_cycle'] ) ? max( 1, (int) $context['loyalty_cycle'] ) : 1;
+		$redeemed_points = $this->points->get_order_redeemed_points_for_cycle( $order_id, $cycle );
 		if ( 0 === $redeemed_points ) {
 			return $this->result( 'skipped', 'order_did_not_redeem_points', 0 );
 		}
@@ -97,13 +105,18 @@ class Order_Cancellation_Service {
 				array(
 					'order_id'                 => $order_id,
 					'trigger'                  => $trigger,
+					'trigger_hook'             => $trigger,
+					'trigger_status'           => $reversal_context['woocommerce_status'],
+					'cycle'                    => $cycle,
 					'redeemed_points_returned' => $redeemed_points,
-					'redeemed_idempotency_key' => 'redeemed_order:' . $order_id,
-					'return_idempotency_key'   => 'returned_redeemed_order:' . $order_id . ':' . $reversal_context['woocommerce_status'],
+					'redeemed_idempotency_key' => Points_Service::cycle_key( 1 === $cycle ? 'redeemed_order' : 'restored_redeemed_order', $order_id, $cycle ),
+					'return_idempotency_key'   => Points_Service::cycle_key( 'returned_redeemed_order', $order_id, $cycle ),
 					'woocommerce_status'       => $reversal_context['woocommerce_status'],
+					'loyalty_cycle'            => $cycle,
 				),
 				$context
-			)
+			),
+			$cycle
 		);
 
 		if ( Points_Service::RESULT_ADDED === $result ) {
@@ -133,10 +146,11 @@ class Order_Cancellation_Service {
 	/**
 	 * Resolve transaction settings for an order terminal status.
 	 *
-	 * @return array{idempotency_key:string,transaction_type:string,source:string,woocommerce_status:string}
+	 * @return array{idempotency_key:string,transaction_type:string,source:string,woocommerce_status:string,loyalty_cycle:int}
 	 */
 	private function get_reversal_context( int $order_id, string $trigger, array $context ): array {
 		$status = isset( $context['woocommerce_status'] ) ? strtolower( preg_replace( '/[^a-z0-9_\-]/', '', (string) $context['woocommerce_status'] ) ?? '' ) : '';
+		$cycle  = isset( $context['loyalty_cycle'] ) ? max( 1, (int) $context['loyalty_cycle'] ) : 1;
 		if ( '' === $status ) {
 			if ( false !== strpos( $trigger, 'refund' ) ) {
 				$status = 'refunded';
@@ -149,27 +163,30 @@ class Order_Cancellation_Service {
 
 		if ( 'refunded' === $status ) {
 			return array(
-				'idempotency_key'   => 'refunded_order:' . $order_id,
+				'idempotency_key'   => Points_Service::cycle_key( 'refunded_order', $order_id, $cycle ),
 				'transaction_type'  => Database::TRANSACTION_REFUND,
 				'source'            => 'woocommerce_order_refund',
 				'woocommerce_status' => $status,
+				'loyalty_cycle'      => $cycle,
 			);
 		}
 
 		if ( 'failed' === $status ) {
 			return array(
-				'idempotency_key'   => 'failed_order:' . $order_id,
+				'idempotency_key'   => Points_Service::cycle_key( 'failed_order', $order_id, $cycle ),
 				'transaction_type'  => Database::TRANSACTION_FAILED,
 				'source'            => 'woocommerce_order_failure',
 				'woocommerce_status' => $status,
+				'loyalty_cycle'      => $cycle,
 			);
 		}
 
 		return array(
-			'idempotency_key'   => 'cancelled_order:' . $order_id,
+			'idempotency_key'   => Points_Service::cycle_key( 'cancelled_order', $order_id, $cycle ),
 			'transaction_type'  => Database::TRANSACTION_CANCELLED,
 			'source'            => 'woocommerce_order_cancellation',
 			'woocommerce_status' => 'cancelled',
+			'loyalty_cycle'      => $cycle,
 		);
 	}
 }

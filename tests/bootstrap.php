@@ -60,4 +60,5 @@ require_once $root . '/includes/services/class-rewards-service.php';
 require_once $root . '/includes/services/class-reward-redemption-service.php';
 require_once $root . '/includes/services/class-initial-bonus-service.php';
 require_once $root . '/includes/services/class-order-cancellation-service.php';
+require_once $root . '/includes/services/class-loyalty-movements-restoration-service.php';
 require_once $root . '/includes/adapters/class-woocommerce-checkout-adapter.php';

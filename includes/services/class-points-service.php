@@ -58,6 +58,55 @@ class Points_Service {
 		return $this->transactions->find_first_for_order_and_type( $order_id, $type );
 	}
 
+	public function get_order_earned_points_for_cycle( int $order_id, int $cycle ): int {
+		$cycle = max( 1, $cycle );
+		if ( 1 === $cycle ) {
+			return max( 0, $this->get_order_transaction_points( $order_id, Database::TRANSACTION_EARNED ) );
+		}
+
+		return max( 0, $this->transactions->get_points_by_idempotency_key( self::cycle_key( 'restored_earned_order', $order_id, $cycle ) ) );
+	}
+
+	public function get_order_redeemed_points_for_cycle( int $order_id, int $cycle ): int {
+		$cycle = max( 1, $cycle );
+		if ( 1 === $cycle ) {
+			return abs( min( 0, $this->get_order_transaction_points( $order_id, Database::TRANSACTION_REDEEMED ) ) );
+		}
+
+		return abs( min( 0, $this->transactions->get_points_by_idempotency_key( self::cycle_key( 'restored_redeemed_order', $order_id, $cycle ) ) ) );
+	}
+
+	public function get_latest_order_reversal_transaction( int $order_id, int $cycle = 1 ): ?array {
+		$cycle = max( 1, $cycle );
+		$keys  = array(
+			self::cycle_key( 'reversed_earned_order', $order_id, $cycle ),
+			self::cycle_key( 'returned_redeemed_order', $order_id, $cycle ),
+		);
+
+		if ( 1 === $cycle ) {
+			$legacy = $this->transactions->find_latest_for_order_and_types(
+				$order_id,
+				array(
+					Database::TRANSACTION_CANCELLED,
+					Database::TRANSACTION_REFUND,
+					Database::TRANSACTION_FAILED,
+					Database::TRANSACTION_RETURNED_REDEEMED,
+				)
+			);
+			if ( is_array( $legacy ) && empty( $legacy['idempotency_key'] ) ) {
+				return $legacy;
+			}
+			$keys[] = 'cancelled_order:' . $order_id;
+			$keys[] = 'refunded_order:' . $order_id;
+			$keys[] = 'failed_order:' . $order_id;
+			$keys[] = 'returned_redeemed_order:' . $order_id . ':cancelled';
+			$keys[] = 'returned_redeemed_order:' . $order_id . ':refunded';
+			$keys[] = 'returned_redeemed_order:' . $order_id . ':failed';
+		}
+
+		return $this->transactions->find_latest_by_idempotency_keys( $keys );
+	}
+
 	/**
 	 * Add points and the corresponding audit transaction atomically.
 	 */
@@ -314,8 +363,14 @@ class Points_Service {
 		int $points,
 		int $order_id,
 		?string $description = null,
-		$metadata = null
+		$metadata = null,
+		int $cycle = 1
 	): bool {
+		$cycle = max( 1, $cycle );
+		if ( is_array( $metadata ) ) {
+			$metadata['loyalty_cycle'] = $cycle;
+		}
+
 		return $this->add_points(
 			$customer_id,
 			$points,
@@ -326,7 +381,7 @@ class Points_Service {
 			$description,
 			$metadata,
 			null,
-			'earned_order:' . $order_id
+			self::cycle_key( 'earned_order', $order_id, $cycle )
 		);
 	}
 
@@ -343,7 +398,8 @@ class Points_Service {
 		$metadata = null,
 		string $idempotency_key = '',
 		string $transaction_type = Database::TRANSACTION_CANCELLED,
-		string $source = 'woocommerce_order_cancellation'
+		string $source = 'woocommerce_order_cancellation',
+		int $cycle = 1
 	): string {
 		if ( $customer_id <= 0 || $points <= 0 || $order_id <= 0 ) {
 			return self::RESULT_FAILED;
@@ -359,12 +415,33 @@ class Points_Service {
 				throw new \RuntimeException( 'Could not lock the customer balance.' );
 			}
 
-			$idempotency_key = '' !== $idempotency_key ? $idempotency_key : 'cancelled_order:' . $order_id;
+			$cycle           = max( 1, $cycle );
+			$event_idempotency_key = '' !== $idempotency_key ? $idempotency_key : self::cycle_key( 'cancelled_order', $order_id, $cycle );
+			$idempotency_key       = self::cycle_key( 'reversed_earned_order', $order_id, $cycle );
+			$terminal_keys         = array( $idempotency_key );
+			if ( 1 === $cycle ) {
+				$terminal_keys[] = 'cancelled_order:' . $order_id;
+				$terminal_keys[] = 'refunded_order:' . $order_id;
+				$terminal_keys[] = 'failed_order:' . $order_id;
+			}
+
+			$duplicate = false;
+			foreach ( $terminal_keys as $terminal_key ) {
+				if ( $this->transactions->exists_by_idempotency_key( $terminal_key ) ) {
+					$duplicate = true;
+					break;
+				}
+			}
 			if (
-				$this->transactions->exists_by_idempotency_key( $idempotency_key ) ||
-				$this->transactions->exists_for_order_and_type( $order_id, Database::TRANSACTION_CANCELLED ) ||
-				$this->transactions->exists_for_order_and_type( $order_id, Database::TRANSACTION_REFUND ) ||
-				$this->transactions->exists_for_order_and_type( $order_id, Database::TRANSACTION_FAILED )
+				$duplicate ||
+				(
+					1 === $cycle &&
+					(
+						$this->transactions->exists_for_order_and_type( $order_id, Database::TRANSACTION_CANCELLED ) ||
+						$this->transactions->exists_for_order_and_type( $order_id, Database::TRANSACTION_REFUND ) ||
+						$this->transactions->exists_for_order_and_type( $order_id, Database::TRANSACTION_FAILED )
+					)
+				)
 			) {
 				if ( ! $this->transaction_manager->commit() ) {
 					throw new \RuntimeException( 'Could not commit the cancelled order duplicate check.' );
@@ -376,6 +453,10 @@ class Points_Service {
 			if ( $balance_before < $points ) {
 				$this->transaction_manager->rollback();
 				return self::RESULT_INSUFFICIENT_BALANCE;
+			}
+
+			if ( is_array( $metadata ) ) {
+				$metadata['event_idempotency_key'] = $event_idempotency_key;
 			}
 
 			$balance_after = $balance_before - $points;
@@ -418,7 +499,8 @@ class Points_Service {
 		int $order_id,
 		string $woocommerce_status,
 		string $trigger,
-		$metadata = null
+		$metadata = null,
+		int $cycle = 1
 	): string {
 		if ( $customer_id <= 0 || $points <= 0 || $order_id <= 0 || '' === $woocommerce_status ) {
 			return self::RESULT_FAILED;
@@ -434,11 +516,18 @@ class Points_Service {
 				throw new \RuntimeException( 'Could not lock the customer balance.' );
 			}
 
+			$cycle           = max( 1, $cycle );
 			$status_key      = strtolower( preg_replace( '/[^a-z0-9_\-]/', '', $woocommerce_status ) ?? '' );
-			$idempotency_key = 'returned_redeemed_order:' . $order_id . ':' . $status_key;
+			$idempotency_key = self::cycle_key( 'returned_redeemed_order', $order_id, $cycle );
 			if (
 				$this->transactions->exists_by_idempotency_key( $idempotency_key ) ||
-				$this->transactions->exists_for_order_and_type( $order_id, Database::TRANSACTION_RETURNED_REDEEMED )
+				(
+					1 === $cycle &&
+					(
+						$this->transactions->exists_by_idempotency_key( 'returned_redeemed_order:' . $order_id . ':' . $status_key ) ||
+						$this->transactions->exists_for_order_and_type( $order_id, Database::TRANSACTION_RETURNED_REDEEMED )
+					)
+				)
 			) {
 				if ( ! $this->transaction_manager->commit() ) {
 					throw new \RuntimeException( 'Could not commit the returned redeemed duplicate check.' );
@@ -458,6 +547,11 @@ class Points_Service {
 				$metadata['points_returned']                = $points;
 				$metadata['woocommerce_status']             = $woocommerce_status;
 				$metadata['trigger']                        = $trigger;
+				$metadata['trigger_status']                 = $woocommerce_status;
+				$metadata['trigger_hook']                   = $trigger;
+				$metadata['cycle']                          = $cycle;
+				$metadata['order_id']                       = $order_id;
+				$metadata['loyalty_cycle']                  = $cycle;
 			}
 
 			if ( ! $this->transactions->insert(
@@ -489,11 +583,164 @@ class Points_Service {
 		}
 	}
 
+	/**
+	 * Restore previously reversed order movements in one recoverable transaction.
+	 *
+	 * @return array{status:string,error:string,earned_points:int,redeemed_points:int,current_balance:int,projected_balance:int,missing_points:int,required_balance:int,available_balance:int,idempotency_key:string,cycle:int}
+	 */
+	public function restore_order_loyalty_movements(
+		int $customer_id,
+		int $order_id,
+		int $earned_points,
+		int $redeemed_points,
+		int $reversal_transaction_id,
+		int $admin_id,
+		int $cycle
+	): array {
+		$cycle           = max( 1, $cycle );
+		$idempotency_key = self::cycle_key( 'restored_order', $order_id, $cycle );
+
+		if ( $customer_id <= 0 || $order_id <= 0 || $admin_id <= 0 || $reversal_transaction_id <= 0 || ( $earned_points <= 0 && $redeemed_points <= 0 ) ) {
+			return $this->restore_result( self::RESULT_FAILED, 'invalid_restore_request', $earned_points, $redeemed_points, 0, 0, 0, 0, $idempotency_key, $cycle );
+		}
+
+		if ( ! $this->transaction_manager->begin() ) {
+			return $this->restore_result( self::RESULT_FAILED, 'transaction_not_started', $earned_points, $redeemed_points, 0, 0, 0, 0, $idempotency_key, $cycle );
+		}
+
+		try {
+			$balance_before = $this->points->lock_balance( $customer_id );
+			if ( null === $balance_before ) {
+				throw new \RuntimeException( 'Could not lock the customer balance.' );
+			}
+
+			if (
+				$this->transactions->exists_by_idempotency_key( $idempotency_key ) ||
+				$this->transactions->exists_by_idempotency_key( self::cycle_key( 'restored_earned_order', $order_id, $cycle ) ) ||
+				$this->transactions->exists_by_idempotency_key( self::cycle_key( 'restored_redeemed_order', $order_id, $cycle ) )
+			) {
+				if ( ! $this->transaction_manager->commit() ) {
+					throw new \RuntimeException( 'Could not commit the duplicate restore check.' );
+				}
+
+				return $this->restore_result( self::RESULT_DUPLICATE, '', $earned_points, $redeemed_points, $balance_before, $balance_before + $earned_points - $redeemed_points, 0, 0, $idempotency_key, $cycle );
+			}
+
+			$net_change        = $earned_points - $redeemed_points;
+			$projected_balance = $balance_before + $net_change;
+			if ( $projected_balance < 0 ) {
+				$this->transaction_manager->rollback();
+				return $this->restore_result( self::RESULT_INSUFFICIENT_BALANCE, 'insufficient_balance', $earned_points, $redeemed_points, $balance_before, $projected_balance, abs( $projected_balance ), $balance_before, $idempotency_key, $cycle );
+			}
+
+			$balance_after = $projected_balance;
+			if ( $balance_after > 2147483647 ) {
+				throw new \RuntimeException( 'Invalid balance after restoration.' );
+			}
+
+			if ( 0 !== $net_change && ! $this->points->adjust( $customer_id, $net_change ) ) {
+				throw new \RuntimeException( 'Could not restore the customer balance.' );
+			}
+
+			$running_balance = $balance_before;
+			if ( $earned_points > 0 ) {
+				$earned_after = $running_balance + $earned_points;
+				if ( ! $this->transactions->insert(
+					array(
+						'customer_id'     => $customer_id,
+						'order_id'        => $order_id,
+						'order_item_id'   => null,
+						'type'            => Database::TRANSACTION_RESTORED_EARNED,
+						'points'          => $earned_points,
+						'balance_before'  => $running_balance,
+						'balance_after'   => $earned_after,
+						'source'          => 'woocommerce_order_loyalty_restore',
+						'description'     => sprintf( 'Restauracion de puntos generados del pedido #%d.', $order_id ),
+						'metadata'        => array(
+							'order_id'                => $order_id,
+							'reversal_transaction_id' => $reversal_transaction_id,
+							'base_idempotency_key'    => $idempotency_key,
+							'loyalty_cycle'           => $cycle,
+						),
+						'created_by'      => $admin_id,
+						'idempotency_key' => self::cycle_key( 'restored_earned_order', $order_id, $cycle ),
+					)
+				) ) {
+					throw new \RuntimeException( 'Could not insert the restored earned transaction.' );
+				}
+				$running_balance = $earned_after;
+			}
+
+			if ( $redeemed_points > 0 ) {
+				$redeemed_after = $running_balance - $redeemed_points;
+				if ( $redeemed_after < 0 || ! $this->transactions->insert(
+					array(
+						'customer_id'     => $customer_id,
+						'order_id'        => $order_id,
+						'order_item_id'   => null,
+						'type'            => Database::TRANSACTION_RESTORED_REDEEMED,
+						'points'          => -1 * $redeemed_points,
+						'balance_before'  => $running_balance,
+						'balance_after'   => $redeemed_after,
+						'source'          => 'woocommerce_order_loyalty_restore',
+						'description'     => sprintf( 'Restauracion de puntos canjeados del pedido #%d.', $order_id ),
+						'metadata'        => array(
+							'order_id'                => $order_id,
+							'reversal_transaction_id' => $reversal_transaction_id,
+							'base_idempotency_key'    => $idempotency_key,
+							'loyalty_cycle'           => $cycle,
+						),
+						'created_by'      => $admin_id,
+						'idempotency_key' => self::cycle_key( 'restored_redeemed_order', $order_id, $cycle ),
+					)
+				) ) {
+					throw new \RuntimeException( 'Could not insert the restored redeemed transaction.' );
+				}
+			}
+
+			if ( ! $this->transaction_manager->commit() ) {
+				throw new \RuntimeException( 'Could not commit the restored order movements.' );
+			}
+
+			return $this->restore_result( self::RESULT_ADDED, '', $earned_points, $redeemed_points, $balance_before, $projected_balance, 0, $balance_after, $idempotency_key, $cycle );
+		} catch ( \Throwable $exception ) {
+			$this->transaction_manager->rollback();
+			return $this->restore_result( self::RESULT_FAILED, 'restore_failed', $earned_points, $redeemed_points, 0, 0, 0, 0, $idempotency_key, $cycle );
+		}
+	}
+
 	public function get_dashboard_totals(): array {
 		return array(
 			'customers' => $this->points->count_customers(),
 			'earned'    => $this->points->sum_total_earned(),
 			'redeemed'  => $this->points->sum_total_redeemed(),
 		);
+	}
+
+	/**
+	 * Build a stable restoration result payload.
+	 *
+	 * @return array{status:string,error:string,earned_points:int,redeemed_points:int,current_balance:int,projected_balance:int,missing_points:int,required_balance:int,available_balance:int,idempotency_key:string,cycle:int}
+	 */
+	private function restore_result( string $status, string $error, int $earned_points, int $redeemed_points, int $current_balance, int $projected_balance, int $missing_points, int $available_balance, string $idempotency_key, int $cycle ): array {
+		return array(
+			'status'            => $status,
+			'error'             => $error,
+			'earned_points'     => max( 0, $earned_points ),
+			'redeemed_points'   => max( 0, $redeemed_points ),
+			'current_balance'   => $current_balance,
+			'projected_balance' => $projected_balance,
+			'missing_points'    => max( 0, $missing_points ),
+			'required_balance'  => max( 0, $redeemed_points ),
+			'available_balance' => max( 0, $available_balance ),
+			'idempotency_key'   => $idempotency_key,
+			'cycle'             => max( 1, $cycle ),
+		);
+	}
+
+	public static function cycle_key( string $operation, int $order_id, int $cycle ): string {
+		$operation = strtolower( preg_replace( '/[^a-z0-9_\-]/', '', $operation ) ?? '' );
+
+		return $operation . ':' . $order_id . ':cycle:' . max( 1, $cycle );
 	}
 }

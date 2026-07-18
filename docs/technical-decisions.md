@@ -321,3 +321,53 @@ El formulario se renderiza fuera del formulario principal de WordPress y sus con
 `Points_Service::adjust_points()` bloquea la fila del cliente y coordina `Customer_Points_Repository::adjust()` con `Transactions_Repository::insert()` dentro de la misma transacción. Registra `type=manual_adjustment`, delta firmado, `balance_before`, `balance_after`, `source=woocommerce_customer_admin`, `description` y `created_by`; no usa SQL en administración ni en el servicio.
 
 Un ajuste negativo que supere el saldo se rechaza por el servicio y también por la condición del repositorio. `total_earned` y `total_redeemed` no cambian porque representan acumulados históricos brutos de compras y canjes, no correcciones administrativas.
+
+## TD-028 - Restauracion Manual De Movimientos Revertidos
+
+Decision: el plugin separa el estado operativo WooCommerce del estado contable de fidelizacion mediante `_lcter_wcpl_loyalty_movements_state`.
+
+Valores internos:
+
+* `loyalty_movements_applied`
+* `loyalty_movements_reversed`
+* `loyalty_movements_restored`
+* `loyalty_restore_error`
+
+Cuando un pedido con movimientos revertidos vuelve a `processing` o `completed`, los hooks de acumulacion y canje no reaplican saldo automaticamente. La pantalla de edicion del pedido muestra una advertencia y una accion explicita "Restaurar movimientos de fidelizacion".
+
+La accion usa `admin-post.php`, requiere `manage_woocommerce`, nonce ligado al pedido y comprueba `WC_Order::is_paid()` antes de llamar al servicio. No modifica pagos, reembolsos ni correos de pasarela.
+
+`Loyalty_Movements_Restoration_Service` exige movimientos originales (`earned` o `redeemed`), una transaccion de reversion/devolucion y ausencia de restauracion previa. La transaccion de reversion mas reciente define el ciclo contable.
+
+`Points_Service::restore_order_loyalty_movements()` bloquea el saldo y crea la restauracion dentro de una unica transaccion SQL. TD-029 define el formato vigente de claves por ciclo. Ambas filas registran `balance_before`, `balance_after`, `created_by`, `source=woocommerce_order_loyalty_restore` y metadata con la transaccion de reversion.
+
+Si el saldo disponible antes de restaurar no alcanza los puntos `redeemed` originales, se aborta antes de sumar puntos ganados. El pedido pasa a `loyalty_restore_error`, conserva el estado visual `REGALO: PENDIENTE DE RESTAURAR PUNTOS` y muestra saldo necesario/disponible para resolucion administrativa.
+
+El estado visual de regalos deja de derivarse solo de WooCommerce: `processing` y `completed` muestran `CANJEADO` solo si no existe reversion contable pendiente. Con `loyalty_movements_reversed` o `loyalty_restore_error` muestran `PENDIENTE DE RESTAURAR PUNTOS`; tras `loyalty_movements_restored` vuelven a `CANJEADO`.
+
+## TD-029 - Ciclos Contables Por Pedido
+
+Decision: cada pedido mantiene `_lcter_wcpl_loyalty_cycle` como ciclo contable activo. El valor por defecto y de compatibilidad es 1. No hay migracion destructiva de transacciones antiguas.
+
+Las escrituras nuevas usan claves con formato `{operation}:{order_id}:cycle:{cycle}`:
+
+* `earned_order:{order_id}:cycle:1`
+* `redeemed_order:{order_id}:cycle:1`
+* `redeemed_order:{order_id}:cycle:1:reward:{reward_id}`
+* `reversed_earned_order:{order_id}:cycle:{cycle}`
+* `returned_redeemed_order:{order_id}:cycle:{cycle}`
+* `restored_order:{order_id}:cycle:{new_cycle}`
+* `restored_earned_order:{order_id}:cycle:{new_cycle}`
+* `restored_redeemed_order:{order_id}:cycle:{new_cycle}`
+
+El ciclo 1 representa los movimientos originales `earned` y `redeemed`. Un ciclo posterior representa movimientos restaurados: `restored_earned` y `restored_redeemed`.
+
+Al cancelar, reembolsar o fallar un pedido, el servicio lee los movimientos aplicados del ciclo activo: en ciclo 1 usa `earned`/`redeemed`; en ciclos posteriores usa `restored_earned`/`restored_redeemed` del ciclo. La idempotencia contable se comprueba con `reversed_earned_order:{order_id}:cycle:{cycle}` y `returned_redeemed_order:{order_id}:cycle:{cycle}`, de modo que `cancelled -> refunded` o `failed -> cancelled` no duplican saldo dentro del mismo ciclo. Una nueva cancelacion tras restaurar en el ciclo siguiente si puede ejecutarse.
+
+Las claves o estados `cancelled_order`, `refunded_order` y `failed_order` son trazabilidad de evento o compatibilidad legacy de ciclo 1. En escrituras nuevas, el estado que provoco la primera reversion queda en metadata con `trigger_status`, `trigger_hook`, `cycle` y `order_id`, junto con `event_idempotency_key`.
+
+Una restauracion correcta toma el ciclo actual revertido, calcula `new_cycle = current_cycle + 1`, crea `restored_earned` y `restored_redeemed` en ese nuevo ciclo y solo entonces actualiza `_lcter_wcpl_loyalty_cycle`. Si cualquier parte falla, el ciclo no cambia.
+
+La validacion de saldo de restauracion usa el saldo proyectado atomico: `projected_balance = current_balance + restored_earned_points - restored_redeemed_points`. La restauracion es valida cuando `projected_balance >= 0`, aunque `current_balance` sea menor que `restored_redeemed_points`. Si el proyectado es negativo, no se crea ninguna transaccion y se guardan `current_balance`, `restored_earned_points`, `restored_redeemed_points`, `projected_balance` y `missing_points`.
+
+Compatibilidad legacy: las claves antiguas `earned_order:{order_id}`, `redeemed_order:{order_id}`, `cancelled_order:{order_id}`, `refunded_order:{order_id}`, `failed_order:{order_id}` y `returned_redeemed_order:{order_id}:{status}` se tratan como ciclo 1. Las comprobaciones por `order_id + type` se conservan solo para reconocer datos anteriores del ciclo 1.

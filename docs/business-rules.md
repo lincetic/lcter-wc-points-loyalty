@@ -121,6 +121,8 @@ Tipos previstos:
 * cancelled
 * failed
 * returned_redeemed
+* restored_earned
+* restored_redeemed
 
 ## BR-017 - Ajuste manual administrativo
 
@@ -138,12 +140,56 @@ La devolución de puntos canjeados incrementa `balance`, crea una transacción `
 
 ## BR-019 - Estado Visual De Regalos
 
-El texto visible de `REGALO` debe derivarse del estado actual de WooCommerce:
+El texto visible de `REGALO` debe derivarse del estado actual de WooCommerce salvo que exista una reversiÃ³n contable pendiente:
 
 * `pending`, `pending_payment` y `on-hold`: `PENDIENTE DE PAGO`
 * `processing` y `completed`: `CANJEADO`
 * `cancelled`: `CANCELADO`
 * `refunded`: `REEMBOLSADO`
 * `failed`: `FALLIDO`
+* `processing` o `completed` con `loyalty_movements_reversed` o `loyalty_restore_error`: `PENDIENTE DE RESTAURAR PUNTOS`
 
 No se usa el texto `REVERTIDO`.
+
+## BR-020 - Estado Contable De Movimientos De FidelizaciÃ³n
+
+El estado operativo de WooCommerce no es la fuente de verdad contable. El pedido guarda un estado interno `_lcter_wcpl_loyalty_movements_state` con estos valores:
+
+* `loyalty_movements_applied`
+* `loyalty_movements_reversed`
+* `loyalty_movements_restored`
+* `loyalty_restore_error`
+
+Cuando un pedido pagado se revierte por `cancelled`, `refunded` o `failed`, el estado contable pasa a `loyalty_movements_reversed` solo si la reversiÃ³n o devoluciÃ³n se completÃ³ o ya existÃ­a de forma idempotente.
+
+## BR-021 - Reapertura Manual De Pedidos Revertidos
+
+Cambiar manualmente un pedido desde `cancelled`, `refunded` o `failed` a `processing` o `completed` no restaura automÃ¡ticamente puntos ganados ni vuelve a descontar puntos de regalos. El cambio de estado WooCommerce no acredita por sÃ­ solo un nuevo cobro real.
+
+La ediciÃ³n del pedido debe mostrar una advertencia administrativa y requerir una acciÃ³n explÃ­cita para restaurar movimientos de fidelizaciÃ³n.
+
+## BR-023 - Ciclos Contables De Fidelizacion
+
+Cada pedido tiene un ciclo contable interno `_lcter_wcpl_loyalty_cycle`. El primer ciclo aplicado es 1. Si el metadato no existe, el pedido se trata como ciclo 1 para compatibilidad.
+
+Las escrituras nuevas de acumulacion, canje, reversion, devolucion y restauracion deben incluir `order_id`, tipo de operacion y ciclo en `idempotency_key`.
+
+Una restauracion correcta abre el ciclo siguiente: restaura los movimientos revertidos del ciclo actual mediante `restored_earned` y `restored_redeemed` en `cycle + 1`, actualiza `_lcter_wcpl_loyalty_cycle` solo al finalizar correctamente y permite una nueva cancelacion legitima en ese nuevo ciclo.
+
+La restauracion calcula `projected_balance = current_balance + restored_earned_points - restored_redeemed_points`. Si `projected_balance < 0`, no se restaura parcialmente y se guardan `current_balance`, `restored_earned_points`, `restored_redeemed_points`, `projected_balance` y `missing_points`.
+
+Repetir la misma operacion dentro del mismo ciclo debe ser idempotente. Una operacion equivalente en un ciclo posterior debe poder ejecutarse.
+
+Las claves antiguas sin ciclo se reconocen como ciclo 1 sin migracion destructiva.
+
+Una misma aplicacion de puntos solo puede revertirse una vez por pedido y ciclo. La retirada de puntos ganados se protege con `reversed_earned_order:{order_id}:cycle:{cycle}` y la devolucion de puntos canjeados con `returned_redeemed_order:{order_id}:cycle:{cycle}`. Cambiar despues de `cancelled` a `refunded` o de `failed` a `cancelled` no autoriza nuevos movimientos contables en el mismo ciclo.
+
+El primer estado terminal que provoca la reversion debe quedar auditado en metadata con `trigger_status`, `trigger_hook`, `cycle` y `order_id`.
+
+## BR-022 - RestauraciÃ³n Administrativa De Movimientos
+
+La acciÃ³n "Restaurar movimientos de fidelizaciÃ³n" requiere `manage_woocommerce`, nonce, pedido pagado, movimientos originales, reversiÃ³n existente y ausencia de restauraciÃ³n previa.
+
+La restauraciÃ³n crea transacciones `restored_earned` y, si hubo regalos, `restored_redeemed`. Debe registrar `balance_before`, `balance_after`, administrador ejecutor e idempotencia por ciclo con `restored_order:{order_id}:cycle:{new_cycle}`, `restored_earned_order:{order_id}:cycle:{new_cycle}` y `restored_redeemed_order:{order_id}:cycle:{new_cycle}`.
+
+Si `projected_balance = current_balance + restored_earned_points - restored_redeemed_points` queda por debajo de cero, no se restaura parcialmente: no se aÃ±aden puntos ganados, no se descuentan puntos canjeados, el pedido queda en `loyalty_restore_error` y se muestran saldo actual, saldo proyectado y puntos faltantes.

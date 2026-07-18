@@ -39,6 +39,10 @@ Tipos documentados:
 * `manual_adjustment`
 * `refund`
 * `cancelled`
+* `failed`
+* `returned_redeemed`
+* `restored_earned`
+* `restored_redeemed`
 
 Persistencia:
 
@@ -82,11 +86,36 @@ Persistencia:
 
 * `lcter_wcpl_order_rewards`
 
+### Estado Contable De Fidelizacion Del Pedido
+
+Representa la situacion contable de los movimientos de puntos asociados al pedido, independiente del estado operativo WooCommerce.
+
+Valores:
+
+* `loyalty_movements_applied`: los movimientos originales estan aplicados.
+* `loyalty_movements_reversed`: existen movimientos originales y una reversion/devolucion posterior.
+* `loyalty_movements_restored`: una restauracion administrativa explicita completo el ciclo.
+* `loyalty_restore_error`: la restauracion fue intentada y rechazada sin movimientos parciales.
+
+Persistencia:
+
+* `_lcter_wcpl_loyalty_movements_state`
+* `_lcter_wcpl_loyalty_restore_error`
+* `_lcter_wcpl_loyalty_cycle`
+* `_lcter_wcpl_loyalty_restore_current_balance`
+* `_lcter_wcpl_loyalty_restore_projected_balance`
+* `_lcter_wcpl_loyalty_restore_missing_points`
+* `_lcter_wcpl_loyalty_restore_earned_points`
+* `_lcter_wcpl_loyalty_restore_redeemed_points`
+* `_lcter_wcpl_loyalty_restore_required_balance`
+* `_lcter_wcpl_loyalty_restore_available_balance`
+
 ## Relaciones
 
 * Un cliente tiene un saldo en `lcter_wcpl_customer_points`.
 * Un cliente puede tener muchas transacciones.
 * Un pedido puede generar una transacción `earned`.
+* Un pedido revertido puede generar `restored_earned` y `restored_redeemed` mediante accion administrativa.
 * Un pedido puede contener varios regalos canjeados.
 * Un regalo canjeado referencia un producto WooCommerce y opcionalmente un reward.
 * Un reward referencia un producto WooCommerce.
@@ -99,3 +128,7 @@ Persistencia:
 * El pedido actual no incrementa el saldo disponible para el canje del propio pedido.
 * Los regalos añadidos al pedido deben tener coste 0.
 * Los regalos deben poder identificarse como REGALO.
+* Cambiar el estado WooCommerce no cambia por si solo el estado contable de fidelizacion.
+* Una restauracion de movimientos se completa entera o no crea transacciones.
+* El ciclo contable empieza en 1 y solo avanza cuando una restauracion administrativa finaliza correctamente.
+* Los movimientos sin ciclo persistido o con claves legacy sin `:cycle:{n}` pertenecen al ciclo 1.

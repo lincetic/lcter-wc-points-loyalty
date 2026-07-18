@@ -46,7 +46,7 @@ class Order_Traceability_Admin {
 	 * @param mixed $order WooCommerce order.
 	 */
 	public function render_order_rewards( $order ): void {
-		if ( ! $order || ! is_callable( array( $order, 'get_id' ) ) ) {
+		if ( ! is_object( $order ) || ! is_callable( array( $order, 'get_id' ) ) ) {
 			return;
 		}
 
@@ -62,7 +62,8 @@ class Order_Traceability_Admin {
 		$redemption_status = sanitize_key( (string) $order->get_meta( '_lcter_wcpl_reward_redemption_status' ) );
 		$is_selected       = WooCommerce_Checkout_Adapter::REWARD_STATE_SELECTED === $reward_state ||
 			( '' === $reward_state && in_array( $redemption_status, array( 'pending_payment', 'processing_error' ), true ) );
-		$is_redeemed       = WooCommerce_Checkout_Adapter::REWARD_STATE_REDEEMED === $reward_state;
+		$is_redeemed        = WooCommerce_Checkout_Adapter::REWARD_STATE_REDEEMED === $reward_state;
+		$is_restore_pending = WooCommerce_Checkout_Adapter::REWARD_STATE_RESTORE_PENDING === $reward_state;
 		?>
 		<div class="lcter-wcpl-order-rewards">
 			<?php if ( $is_selected ) : ?>
@@ -75,6 +76,10 @@ class Order_Traceability_Admin {
 			<?php elseif ( $is_redeemed ) : ?>
 				<div class="notice notice-success inline">
 					<p><strong><?php esc_html_e( 'REGALO CANJEADO.', LCTER_WCPL_TEXT_DOMAIN ); ?></strong> <?php esc_html_e( 'El pago, el descuento de puntos y la trazabilidad se completaron.', LCTER_WCPL_TEXT_DOMAIN ); ?></p>
+				</div>
+			<?php elseif ( $is_restore_pending ) : ?>
+				<div class="notice notice-warning inline">
+					<p><strong><?php esc_html_e( 'REGALO PENDIENTE DE RESTAURAR PUNTOS.', LCTER_WCPL_TEXT_DOMAIN ); ?></strong> <?php esc_html_e( 'El pedido figura pagado, pero sus movimientos de fidelización siguen revertidos.', LCTER_WCPL_TEXT_DOMAIN ); ?></p>
 				</div>
 			<?php endif; ?>
 

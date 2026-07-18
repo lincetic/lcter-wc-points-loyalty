@@ -111,15 +111,16 @@ class Reward_Redemption_Service {
 		);
 	}
 
-	public function is_order_redeemed( int $order_id ): bool {
+	public function is_order_redeemed( int $order_id, int $cycle = 1 ): bool {
+		$cycle = max( 1, $cycle );
 		return $order_id > 0 && (
-			$this->points->has_idempotency_key( 'redeemed_order:' . $order_id ) ||
-			$this->points->has_order_transaction( $order_id, Database::TRANSACTION_REDEEMED )
+			$this->points->has_idempotency_key( Points_Service::cycle_key( 'redeemed_order', $order_id, $cycle ) ) ||
+			( 1 === $cycle && ( $this->points->has_idempotency_key( 'redeemed_order:' . $order_id ) || $this->points->has_order_transaction( $order_id, Database::TRANSACTION_REDEEMED ) ) )
 		);
 	}
 
-	public function get_order_earned_points( int $order_id ): int {
-		return max( 0, $this->points->get_order_transaction_points( $order_id, Database::TRANSACTION_EARNED ) );
+	public function get_order_earned_points( int $order_id, int $cycle = 1 ): int {
+		return $this->points->get_order_earned_points_for_cycle( $order_id, $cycle );
 	}
 
 	/**
@@ -130,7 +131,7 @@ class Reward_Redemption_Service {
 	 * @param array $items Enriched reward rows keyed by reward ID.
 	 * @return array
 	 */
-	public function redeem_paid_order( int $customer_id, int $order_id, array $items ): array {
+	public function redeem_paid_order( int $customer_id, int $order_id, array $items, int $cycle = 1 ): array {
 		if ( $customer_id <= 0 || $order_id <= 0 || empty( $items ) ) {
 			return array(
 				'success'    => false,
@@ -164,14 +165,18 @@ class Reward_Redemption_Service {
 			$total_points += $cost_total;
 		}
 
+		$cycle    = max( 1, $cycle );
 		$redeemed = $this->points->redeem_points(
 			$customer_id,
 			$total_points,
 			$order_id,
 			null,
 			sprintf( 'Regalos canjeados en el pedido #%d.', $order_id ),
-			array( 'rewards' => array_values( $items ) ),
-			'redeemed_order:' . $order_id
+			array(
+				'rewards'       => array_values( $items ),
+				'loyalty_cycle' => $cycle,
+			),
+			Points_Service::cycle_key( 'redeemed_order', $order_id, $cycle )
 		);
 
 		if ( ! $redeemed ) {
@@ -191,7 +196,7 @@ class Reward_Redemption_Service {
 					array(
 						'order_id'        => $order_id,
 						'customer_id'     => $customer_id,
-						'idempotency_key' => 'redeemed_order:' . $order_id . ':reward:' . $reward_id,
+						'idempotency_key' => Points_Service::cycle_key( 'redeemed_order', $order_id, $cycle ) . ':reward:' . $reward_id,
 					)
 				)
 			);

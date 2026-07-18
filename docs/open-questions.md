@@ -17,9 +17,13 @@ Este documento recoge aspectos no definidos en `AGENTS.md`, `docs/business-rules
 
 11. ¿Debe ampliarse en el futuro el bonus a otros roles, clientes invitados vinculados posteriormente o usuarios que hayan comprado sin conservar el rol `customer`?
 12. ¿Como deben calcularse los puntos a revertir en un reembolso parcial: por importe reembolsado, por lineas, impuestos, cupones y portes?
-13. ¿Que debe ocurrir si un pedido revertido vuelve posteriormente a `processing` o `completed`?
+13. Resuelta: si un pedido revertido vuelve posteriormente a `processing` o `completed`, no se restauran movimientos automaticamente. Administracion debe usar la accion explicita de restauracion.
 
-Actualizacion 2026-07-08: para esta fase queda resuelto que en `cancelled`, `refunded` y `failed` se revierten puntos `earned` con transacciones `cancelled`, `refund` o `failed`, y que los puntos de regalos canjeados se devuelven con `returned_redeemed`. Sigue abierta la politica de reapertura posterior a `processing` o `completed` despues de haber revertido o devuelto puntos.
+Actualizacion 2026-07-08: para esta fase queda resuelto que en `cancelled`, `refunded` y `failed` se revierten puntos `earned` con transacciones `cancelled`, `refund` o `failed`, y que los puntos de regalos canjeados se devuelven con `returned_redeemed`.
+
+Actualizacion 2026-07-18: la reapertura posterior a `processing` o `completed` no reaplica puntos automaticamente. El estado contable queda separado mediante `_lcter_wcpl_loyalty_movements_state` y la restauracion requiere accion administrativa protegida.
+
+Actualizacion 2026-07-18 ciclo contable: resuelto el caso de multiples cancelaciones separadas por restauraciones. `_lcter_wcpl_loyalty_cycle` permite idempotencia dentro de cada ciclo y nuevas operaciones legitimas en ciclos posteriores. Las claves legacy sin ciclo se tratan como ciclo 1.
 
 ## Checkout Y Experiencia De Cliente
 

@@ -34,7 +34,7 @@ final class OrderCancellationServiceTest extends TestCase {
 		);
 		self::assertSame( 1, $points->reverse_calls );
 		self::assertSame( 6015, $points->last_reversed_points );
-		self::assertSame( 'cancelled_order:55', $points->last_reverse_idempotency_key );
+		self::assertSame( 'cancelled_order:55:cycle:1', $points->last_reverse_idempotency_key );
 		self::assertSame( Database::TRANSACTION_CANCELLED, $points->last_reverse_transaction_type );
 	}
 
@@ -56,7 +56,7 @@ final class OrderCancellationServiceTest extends TestCase {
 			array( 'status' => 'reversed', 'error' => '', 'points' => 6015 ),
 			$service->reverse_order( 7, 55, 'order_fully_refunded', array( 'woocommerce_status' => 'refunded' ) )
 		);
-		self::assertSame( 'refunded_order:55', $points->last_reverse_idempotency_key );
+		self::assertSame( 'refunded_order:55:cycle:1', $points->last_reverse_idempotency_key );
 		self::assertSame( Database::TRANSACTION_REFUND, $points->last_reverse_transaction_type );
 	}
 
@@ -82,6 +82,8 @@ final class Cancellation_Points_Service extends Points_Service {
 	public string $last_reverse_idempotency_key = '';
 	public string $last_reverse_transaction_type = '';
 	public string $last_return_status = '';
+	public int $last_reverse_cycle = 0;
+	public int $last_return_cycle = 0;
 
 	private int $earned_points;
 	private int $redeemed_points;
@@ -111,20 +113,32 @@ final class Cancellation_Points_Service extends Points_Service {
 		throw new \RuntimeException( 'Unexpected transaction type lookup.' );
 	}
 
-	public function reverse_order_earned_points( int $customer_id, int $points, int $order_id, string $reason, $metadata = null, string $idempotency_key = '', string $transaction_type = Database::TRANSACTION_CANCELLED, string $source = 'woocommerce_order_cancellation' ): string {
+	public function get_order_earned_points_for_cycle( int $order_id, int $cycle ): int {
+		unset( $cycle );
+		return $this->get_order_transaction_points( $order_id, Database::TRANSACTION_EARNED );
+	}
+
+	public function get_order_redeemed_points_for_cycle( int $order_id, int $cycle ): int {
+		unset( $cycle );
+		return abs( min( 0, $this->get_order_transaction_points( $order_id, Database::TRANSACTION_REDEEMED ) ) );
+	}
+
+	public function reverse_order_earned_points( int $customer_id, int $points, int $order_id, string $reason, $metadata = null, string $idempotency_key = '', string $transaction_type = Database::TRANSACTION_CANCELLED, string $source = 'woocommerce_order_cancellation', int $cycle = 1 ): string {
 		unset( $customer_id, $order_id, $reason, $metadata, $source );
 		++$this->reverse_calls;
 		$this->last_reversed_points = $points;
 		$this->last_reverse_idempotency_key = $idempotency_key;
 		$this->last_reverse_transaction_type = $transaction_type;
+		$this->last_reverse_cycle = $cycle;
 		return $this->reverse_result;
 	}
 
-	public function return_order_redeemed_points( int $customer_id, int $points, int $order_id, string $woocommerce_status, string $trigger, $metadata = null ): string {
+	public function return_order_redeemed_points( int $customer_id, int $points, int $order_id, string $woocommerce_status, string $trigger, $metadata = null, int $cycle = 1 ): string {
 		unset( $customer_id, $order_id, $trigger, $metadata );
 		++$this->return_calls;
 		$this->last_returned_points = $points;
 		$this->last_return_status   = $woocommerce_status;
+		$this->last_return_cycle    = $cycle;
 		return $this->return_result;
 	}
 }

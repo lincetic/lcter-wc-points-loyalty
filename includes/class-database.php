@@ -33,6 +33,8 @@ class Database {
 	const TRANSACTION_CANCELLED         = 'cancelled';
 	const TRANSACTION_FAILED            = 'failed';
 	const TRANSACTION_RETURNED_REDEEMED = 'returned_redeemed';
+	const TRANSACTION_RESTORED_EARNED   = 'restored_earned';
+	const TRANSACTION_RESTORED_REDEEMED = 'restored_redeemed';
 
 	/**
 	 * Get a trusted plugin table name.

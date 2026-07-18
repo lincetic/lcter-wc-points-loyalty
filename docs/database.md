@@ -66,6 +66,10 @@ Tipos:
 * manual_adjustment
 * refund
 * cancelled
+* failed
+* returned_redeemed
+* restored_earned
+* restored_redeemed
 
 ---
 
@@ -140,6 +144,15 @@ Campos:
 * La acumulación usa la clave `earned_order:{order_id}`. El índice único evita duplicados sin impedir otros tipos de movimiento para el mismo pedido.
 * También se consulta `order_id` junto con `type` para reconocer acumulaciones anteriores a `idempotency_key`.
 * El canje usa `redeemed_order:{order_id}` en transacciones y `redeemed_order:{order_id}:reward:{reward_id}` en regalos de pedido.
+* Los pedidos guardan el ciclo contable actual en `_lcter_wcpl_loyalty_cycle`. Si falta, se interpreta como ciclo 1.
+* Las claves nuevas de movimientos de pedido incluyen ciclo: `{operation}:{order_id}:cycle:{cycle}`.
+* La acumulacion inicial usa `earned_order:{order_id}:cycle:1`.
+* El canje inicial usa `redeemed_order:{order_id}:cycle:1` en transacciones y `redeemed_order:{order_id}:cycle:1:reward:{reward_id}` en regalos de pedido.
+* La reversion contable de puntos ganados usa `reversed_earned_order:{order_id}:cycle:{cycle}`. Los estados `cancelled`, `refunded` o `failed` se guardan como causa en metadata, no como claves que autoricen otro movimiento de saldo.
+* La devolucion de puntos canjeados usa `returned_redeemed_order:{order_id}:cycle:{cycle}`.
+* La restauracion administrativa abre el ciclo siguiente y usa `restored_order:{order_id}:cycle:{new_cycle}` como clave base, `restored_earned_order:{order_id}:cycle:{new_cycle}` para `restored_earned` y `restored_redeemed_order:{order_id}:cycle:{new_cycle}` para `restored_redeemed`.
+* Para compatibilidad, claves antiguas sin `:cycle:{n}` (`earned_order:{order_id}`, `redeemed_order:{order_id}`, `cancelled_order:{order_id}`, `refunded_order:{order_id}`, `failed_order:{order_id}`, `returned_redeemed_order:{order_id}:{status}`) se tratan como ciclo 1. No se migran ni se reescriben destructivamente.
+* Nota vigente: cualquier referencia anterior a claves sin ciclo describe datos legacy. Las escrituras nuevas de pedido deben usar siempre `:cycle:{cycle}`.
 * La clave única de `order_rewards` permite reintentar un canje parcialmente registrado sin duplicar filas.
 * El cálculo de puntos depende del total del pedido, no del producto.
 * Los regalos son productos WooCommerce configurados como rewards.

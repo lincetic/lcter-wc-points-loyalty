@@ -24,6 +24,20 @@ class WooCommerce_Orders_Adapter {
 	const ORDER_POINTS_CANCELLATION_PENDING_META  = '_lcter_wcpl_points_cancellation_pending';
 	const ORDER_POINTS_CANCELLATION_TRIGGER_META  = '_lcter_wcpl_points_cancellation_trigger';
 	const ORDER_POINTS_CANCELLATION_CONTEXT_META  = '_lcter_wcpl_points_cancellation_context';
+	const LOYALTY_MOVEMENTS_STATE_META            = '_lcter_wcpl_loyalty_movements_state';
+	const LOYALTY_CYCLE_META                      = '_lcter_wcpl_loyalty_cycle';
+	const LOYALTY_STATE_APPLIED                   = 'loyalty_movements_applied';
+	const LOYALTY_STATE_REVERSED                  = 'loyalty_movements_reversed';
+	const LOYALTY_STATE_RESTORED                  = 'loyalty_movements_restored';
+	const LOYALTY_STATE_RESTORE_ERROR             = 'loyalty_restore_error';
+	const LOYALTY_RESTORE_ERROR_META              = '_lcter_wcpl_loyalty_restore_error';
+	const LOYALTY_RESTORE_CURRENT_BALANCE_META    = '_lcter_wcpl_loyalty_restore_current_balance';
+	const LOYALTY_RESTORE_PROJECTED_BALANCE_META  = '_lcter_wcpl_loyalty_restore_projected_balance';
+	const LOYALTY_RESTORE_MISSING_POINTS_META     = '_lcter_wcpl_loyalty_restore_missing_points';
+	const LOYALTY_RESTORE_EARNED_POINTS_META      = '_lcter_wcpl_loyalty_restore_earned_points';
+	const LOYALTY_RESTORE_REDEEMED_POINTS_META    = '_lcter_wcpl_loyalty_restore_redeemed_points';
+	const LOYALTY_RESTORE_REQUIRED_BALANCE_META   = '_lcter_wcpl_loyalty_restore_required_balance';
+	const LOYALTY_RESTORE_AVAILABLE_BALANCE_META  = '_lcter_wcpl_loyalty_restore_available_balance';
 	const POINTS_PER_CURRENCY_UNIT                = 100;
 
 	private Points_Service $points_service;
@@ -52,6 +66,11 @@ class WooCommerce_Orders_Adapter {
 			return;
 		}
 
+		if ( $this->has_pending_reversed_movements( $order ) || self::LOYALTY_STATE_RESTORED === sanitize_key( (string) $order->get_meta( self::LOYALTY_MOVEMENTS_STATE_META ) ) ) {
+			WooCommerce_Checkout_Adapter::sync_order_reward_visual_state( $order );
+			return;
+		}
+
 		$customer_id = (int) $order->get_customer_id();
 		if ( $customer_id <= 0 ) {
 			return;
@@ -62,6 +81,7 @@ class WooCommerce_Orders_Adapter {
 			return;
 		}
 
+		$cycle   = self::get_order_loyalty_cycle( $order );
 		$awarded = $this->points_service->award_points_for_order(
 			$customer_id,
 			$total_points,
@@ -71,11 +91,15 @@ class WooCommerce_Orders_Adapter {
 				'order_total'    => (float) $order->get_total(),
 				'shipping_total' => (float) $order->get_shipping_total(),
 				'shipping_tax'   => (float) $order->get_shipping_tax(),
-			)
+				'loyalty_cycle'  => $cycle,
+			),
+			$cycle
 		);
 
 		if ( $awarded && ! $order->get_meta( self::ORDER_POINTS_AWARDED_META ) ) {
 			$order->update_meta_data( self::ORDER_POINTS_AWARDED_META, $total_points );
+			$order->update_meta_data( self::LOYALTY_CYCLE_META, $cycle );
+			$order->update_meta_data( self::LOYALTY_MOVEMENTS_STATE_META, self::LOYALTY_STATE_APPLIED );
 			$order->save();
 		}
 	}
@@ -123,6 +147,7 @@ class WooCommerce_Orders_Adapter {
 		$context                 = $order->get_meta( self::ORDER_POINTS_CANCELLATION_CONTEXT_META );
 		$context                 = is_array( $context ) ? $context : array();
 		$context['manual_retry'] = true;
+		$context['loyalty_cycle'] = self::get_order_loyalty_cycle( $order );
 
 		$this->process_order_reversal( $order_id, $trigger ?: 'manual_retry', $context );
 	}
@@ -136,7 +161,8 @@ class WooCommerce_Orders_Adapter {
 			return;
 		}
 
-		$result = $this->cancellation_service->reverse_order( (int) $order->get_customer_id(), $order_id, $trigger, $context );
+		$context['loyalty_cycle'] = self::get_order_loyalty_cycle( $order );
+		$result                   = $this->cancellation_service->reverse_order( (int) $order->get_customer_id(), $order_id, $trigger, $context );
 
 		if ( 'skipped' === $result['status'] ) {
 			$order->update_meta_data( self::ORDER_POINTS_CANCELLATION_STATUS_META, 'skipped' );
@@ -190,6 +216,7 @@ class WooCommerce_Orders_Adapter {
 		WooCommerce_Checkout_Adapter::sync_order_reward_visual_state( $order, false, $woocommerce_status );
 
 		$context['woocommerce_status'] = $woocommerce_status;
+		$context['loyalty_cycle']      = self::get_order_loyalty_cycle( $order );
 		$return_result                 = $this->cancellation_service->return_redeemed_order( (int) $order->get_customer_id(), $order_id, $trigger, $context );
 		if ( 'returned' === $return_result['status'] ) {
 			$order->add_order_note(
@@ -213,6 +240,21 @@ class WooCommerce_Orders_Adapter {
 
 		$earned_result = $this->cancellation_service->reverse_order( (int) $order->get_customer_id(), $order_id, $trigger, $context );
 		$this->persist_earned_reversal_result( $order, $trigger, $context, $earned_result );
+		if (
+			in_array( $return_result['status'], array( 'returned', 'duplicate', 'skipped' ), true ) &&
+			in_array( $earned_result['status'], array( 'reversed', 'duplicate', 'skipped' ), true ) &&
+			( in_array( $return_result['status'], array( 'returned', 'duplicate' ), true ) || in_array( $earned_result['status'], array( 'reversed', 'duplicate' ), true ) )
+		) {
+			$order->update_meta_data( self::LOYALTY_MOVEMENTS_STATE_META, self::LOYALTY_STATE_REVERSED );
+			$order->delete_meta_data( self::LOYALTY_RESTORE_ERROR_META );
+			$order->delete_meta_data( self::LOYALTY_RESTORE_CURRENT_BALANCE_META );
+			$order->delete_meta_data( self::LOYALTY_RESTORE_PROJECTED_BALANCE_META );
+			$order->delete_meta_data( self::LOYALTY_RESTORE_MISSING_POINTS_META );
+			$order->delete_meta_data( self::LOYALTY_RESTORE_EARNED_POINTS_META );
+			$order->delete_meta_data( self::LOYALTY_RESTORE_REDEEMED_POINTS_META );
+			$order->delete_meta_data( self::LOYALTY_RESTORE_REQUIRED_BALANCE_META );
+			$order->delete_meta_data( self::LOYALTY_RESTORE_AVAILABLE_BALANCE_META );
+		}
 		$order->save();
 	}
 
@@ -264,5 +306,29 @@ class WooCommerce_Orders_Adapter {
 	 */
 	private function amount_to_cents( $amount ): int {
 		return (int) round( (float) $amount * self::POINTS_PER_CURRENCY_UNIT );
+	}
+
+	public static function order_has_pending_reversed_movements( $order ): bool {
+		if ( ! $order || ! is_callable( array( $order, 'get_meta' ) ) ) {
+			return false;
+		}
+
+		return in_array(
+			sanitize_key( (string) $order->get_meta( self::LOYALTY_MOVEMENTS_STATE_META ) ),
+			array( self::LOYALTY_STATE_REVERSED, self::LOYALTY_STATE_RESTORE_ERROR ),
+			true
+		);
+	}
+
+	public static function get_order_loyalty_cycle( $order ): int {
+		if ( ! $order || ! is_callable( array( $order, 'get_meta' ) ) ) {
+			return 1;
+		}
+
+		return max( 1, (int) $order->get_meta( self::LOYALTY_CYCLE_META ) );
+	}
+
+	private function has_pending_reversed_movements( $order ): bool {
+		return self::order_has_pending_reversed_movements( $order );
 	}
 }
