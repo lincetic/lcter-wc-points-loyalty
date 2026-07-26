@@ -63,6 +63,16 @@ class Admin {
 
 		register_setting(
 			'lcter_wcpl_settings_group',
+			Settings::OPTION_MAX_CHECKOUT_REWARDS,
+			array(
+				'type'              => 'integer',
+				'sanitize_callback' => array( Settings::class, 'sanitize_max_checkout_rewards' ),
+				'default'           => Settings::DEFAULT_MAX_CHECKOUT_REWARDS,
+			)
+		);
+
+		register_setting(
+			'lcter_wcpl_settings_group',
 			Settings::OPTION_REWARD_COST_MULTIPLIER,
 			array(
 				'type'              => 'integer',
@@ -90,6 +100,14 @@ class Admin {
 			Settings::OPTION_REWARD_COST_MULTIPLIER,
 			__( 'Multiplicador de coste de rewards', LCTER_WCPL_TEXT_DOMAIN ),
 			array( $this, 'render_reward_cost_multiplier_field' ),
+			'lcter-wcpl-settings',
+			'lcter_wcpl_general_settings'
+		);
+
+		add_settings_field(
+			Settings::OPTION_MAX_CHECKOUT_REWARDS,
+			__( 'Máximo de regalos mostrados en checkout', LCTER_WCPL_TEXT_DOMAIN ),
+			array( $this, 'render_max_checkout_rewards_field' ),
 			'lcter-wcpl-settings',
 			'lcter_wcpl_general_settings'
 		);
@@ -168,6 +186,13 @@ class Admin {
 		?>
 		<input type="number" class="small-text" min="1" step="1" id="<?php echo esc_attr( Settings::OPTION_REWARD_COST_MULTIPLIER ); ?>" name="<?php echo esc_attr( Settings::OPTION_REWARD_COST_MULTIPLIER ); ?>" value="<?php echo esc_attr( (string) Settings::get_reward_cost_multiplier() ); ?>" required />
 		<p class="description"><?php esc_html_e( 'Se multiplica por el precio del producto con IVA incluido para sugerir su coste en puntos. Valor por defecto: 2.000.', LCTER_WCPL_TEXT_DOMAIN ); ?></p>
+		<?php
+	}
+
+	public function render_max_checkout_rewards_field(): void {
+		?>
+		<input type="number" class="small-text" min="1" max="50" step="1" id="<?php echo esc_attr( Settings::OPTION_MAX_CHECKOUT_REWARDS ); ?>" name="<?php echo esc_attr( Settings::OPTION_MAX_CHECKOUT_REWARDS ); ?>" value="<?php echo esc_attr( (string) Settings::get_max_checkout_rewards() ); ?>" required />
+		<p class="description"><?php esc_html_e( 'Se aplica después de validar fechas, publicación, compra y stock. Valor por defecto: 12.', LCTER_WCPL_TEXT_DOMAIN ); ?></p>
 		<?php
 	}
 

@@ -19,8 +19,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Settings {
 	const OPTION_INITIAL_BONUS_POINTS       = 'lcter_wcpl_initial_bonus_points';
 	const OPTION_REWARD_COST_MULTIPLIER    = 'lcter_wcpl_reward_cost_multiplier';
+	const OPTION_MAX_CHECKOUT_REWARDS      = 'lcter_wcpl_max_checkout_rewards';
 	const DEFAULT_INITIAL_BONUS_POINTS      = 10000;
 	const DEFAULT_REWARD_COST_MULTIPLIER   = 2000;
+	const DEFAULT_MAX_CHECKOUT_REWARDS     = 12;
+	const MAXIMUM_CHECKOUT_REWARDS         = 50;
 	const MAXIMUM_CONFIGURABLE_INTEGER     = 2147483647;
 
 	/**
@@ -41,6 +44,20 @@ class Settings {
 			self::OPTION_REWARD_COST_MULTIPLIER,
 			self::DEFAULT_REWARD_COST_MULTIPLIER
 		);
+	}
+
+	public static function get_max_checkout_rewards(): int {
+		$value = get_option( self::OPTION_MAX_CHECKOUT_REWARDS, self::DEFAULT_MAX_CHECKOUT_REWARDS );
+		return self::is_positive_integer( $value ) && (int) $value <= self::MAXIMUM_CHECKOUT_REWARDS ? (int) $value : self::DEFAULT_MAX_CHECKOUT_REWARDS;
+	}
+
+	public static function sanitize_max_checkout_rewards( $value ): int {
+		if ( self::is_positive_integer( $value ) && (int) $value <= self::MAXIMUM_CHECKOUT_REWARDS ) {
+			return (int) $value;
+		}
+
+		add_settings_error( 'lcter_wcpl_settings', self::OPTION_MAX_CHECKOUT_REWARDS, __( 'El máximo de regalos debe ser un entero entre 1 y 50.', LCTER_WCPL_TEXT_DOMAIN ), 'error' );
+		return self::get_max_checkout_rewards();
 	}
 
 	/**

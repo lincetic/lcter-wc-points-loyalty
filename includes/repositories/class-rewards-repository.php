@@ -17,25 +17,32 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Rewards_Repository {
 	public function find_active( int $limit ): array {
+		return array_slice( $this->find_checkout_candidates(), 0, max( 1, min( 100, $limit ) ) );
+	}
+
+	public function find_checkout_candidates(): array {
 		global $wpdb;
 
-		$limit        = max( 1, min( 100, $limit ) );
 		$current_time = current_time( 'mysql' );
 
 		return $wpdb->get_results(
 			$wpdb->prepare(
 				'SELECT * FROM ' . $this->table_name() . '
 				WHERE active = 1
+				AND visible_in_checkout = 1
 				AND (starts_at IS NULL OR starts_at <= %s)
 				AND (ends_at IS NULL OR ends_at >= %s)
-				ORDER BY sort_order ASC, id ASC
-				LIMIT %d',
+				ORDER BY sort_order ASC, id ASC',
 				$current_time,
-				$current_time,
-				$limit
+				$current_time
 			),
 			ARRAY_A
 		);
+	}
+
+	public function find_all(): array {
+		global $wpdb;
+		return $wpdb->get_results( 'SELECT * FROM ' . $this->table_name() . ' ORDER BY sort_order ASC, id ASC', ARRAY_A );
 	}
 
 	public function find( int $reward_id ): ?array {
@@ -86,11 +93,12 @@ class Rewards_Repository {
 			'product_id'  => $product_id,
 			'points_cost' => $points_cost,
 			'active'      => empty( $reward['active'] ) ? 0 : 1,
+			'visible_in_checkout' => ! empty( $reward['active'] ) && ! empty( $reward['visible_in_checkout'] ) ? 1 : 0,
 			'sort_order'  => isset( $reward['sort_order'] ) ? (int) $reward['sort_order'] : 0,
 			'starts_at'   => $starts_at,
 			'ends_at'     => $ends_at,
 		);
-		$formats = array( '%d', '%d', '%d', '%d', '%s', '%s' );
+		$formats = array( '%d', '%d', '%d', '%d', '%d', '%s', '%s' );
 
 		if ( 0 === $reward_id ) {
 			$existing  = $this->find_by_product( $product_id );
@@ -127,13 +135,32 @@ class Rewards_Repository {
 
 		$updated = $wpdb->update(
 			$this->table_name(),
-			array( 'active' => 0 ),
+			array( 'active' => 0, 'visible_in_checkout' => 0 ),
 			array( 'id' => $reward_id ),
-			array( '%d' ),
+			array( '%d', '%d' ),
 			array( '%d' )
 		);
 
 		return false !== $updated;
+	}
+
+	public function update_flags( int $reward_id, ?int $active = null, ?int $visible = null ): bool {
+		global $wpdb;
+		$reward = $this->find( $reward_id );
+		if ( ! $reward ) {
+			return false;
+		}
+		$data = array();
+		if ( null !== $active ) {
+			$data['active'] = $active ? 1 : 0;
+			if ( ! $active ) {
+				$data['visible_in_checkout'] = 0;
+			}
+		}
+		if ( null !== $visible ) {
+			$data['visible_in_checkout'] = $visible && ( null !== $active ? $active : ! empty( $reward['active'] ) ) ? 1 : 0;
+		}
+		return ! empty( $data ) && false !== $wpdb->update( $this->table_name(), $data, array( 'id' => $reward_id ), array_fill( 0, count( $data ), '%d' ), array( '%d' ) );
 	}
 
 	private function normalize_datetime( $datetime ): ?string {

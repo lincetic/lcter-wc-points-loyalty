@@ -157,3 +157,10 @@ Campos:
 * El cálculo de puntos depende del total del pedido, no del producto.
 * Los regalos son productos WooCommerce configurados como rewards.
 * Los regalos canjeados también deben guardarse como metadatos del pedido o del order item si es necesario para Clientify.
+# Catálogo central de regalos (esquema 1.3.0)
+
+`lcter_wcpl_rewards.visible_in_checkout TINYINT(1) NOT NULL DEFAULT 1` separa la
+visibilidad en checkout de `active`. La migración no destructiva copia `active` a
+la nueva columna para filas anteriores y normaliza a cero toda fila inactiva.
+Se añade un índice independiente; `product_id` continúa siendo único y
+`order_rewards` no se modifica.

@@ -149,3 +149,9 @@ El loader ejecuta `Database::maybe_upgrade()` para aplicar cambios de esquema cu
 9. Solo después, con prioridad 10, se acreditan los puntos generados por el propio pedido.
 
 Si el pedido nunca se paga, no se descuentan puntos. No se implementa reserva de saldo en esta fase.
+# Catálogo centralizado
+
+`Reward_Catalog_Admin` contiene la UI y traduce entradas administrativas;
+`Rewards_Service` centraliza disponibilidad y normalización; y
+`Rewards_Repository` conserva todo SQL. El checkout y la revalidación de pago
+consumen el mismo método del servicio, evitando reglas duplicadas.

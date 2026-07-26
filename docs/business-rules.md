@@ -193,3 +193,11 @@ La acciÃ³n "Restaurar movimientos de fidelizaciÃ³n" requiere `manage_woocomm
 La restauraciÃ³n crea transacciones `restored_earned` y, si hubo regalos, `restored_redeemed`. Debe registrar `balance_before`, `balance_after`, administrador ejecutor e idempotencia por ciclo con `restored_order:{order_id}:cycle:{new_cycle}`, `restored_earned_order:{order_id}:cycle:{new_cycle}` y `restored_redeemed_order:{order_id}:cycle:{new_cycle}`.
 
 Si `projected_balance = current_balance + restored_earned_points - restored_redeemed_points` queda por debajo de cero, no se restaura parcialmente: no se aÃ±aden puntos ganados, no se descuentan puntos canjeados, el pedido queda en `loyalty_restore_error` y se muestran saldo actual, saldo proyectado y puntos faltantes.
+# Selección efectiva del checkout
+
+La fuente única es `Rewards_Service::get_available_checkout_rewards()`: activo,
+visible, dentro de fechas, producto existente y publicado, comprable y con stock
+cuando este se gestiona; orden `sort_order ASC, id ASC`; límite configurable
+entre 1 y 50 (12 por defecto). La misma selección se vuelve a validar al enviar
+el checkout y antes del canje pagado. Desactivar u ocultar conserva coste, orden,
+fechas e historial.

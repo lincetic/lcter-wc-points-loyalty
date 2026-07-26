@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Database {
 	const SCHEMA_VERSION_OPTION = 'lcter_wcpl_schema_version';
-	const SCHEMA_VERSION        = '1.2.0';
+	const SCHEMA_VERSION        = '1.3.0';
 
 	const TABLE_SUFFIX_CUSTOMER_POINTS = 'customer_points';
 	const TABLE_SUFFIX_TRANSACTIONS    = 'transactions';
@@ -119,6 +119,7 @@ class Database {
 			product_id BIGINT(20) UNSIGNED NOT NULL,
 			points_cost INT(11) NOT NULL,
 			active TINYINT(1) NOT NULL DEFAULT 1,
+			visible_in_checkout TINYINT(1) NOT NULL DEFAULT 1,
 			sort_order INT(11) NOT NULL DEFAULT 0,
 			starts_at DATETIME NULL,
 			ends_at DATETIME NULL,
@@ -127,6 +128,7 @@ class Database {
 			PRIMARY KEY  (id),
 			UNIQUE KEY product_id (product_id),
 			KEY active (active),
+			KEY visible_in_checkout (visible_in_checkout),
 			KEY starts_at (starts_at),
 			KEY ends_at (ends_at),
 			KEY sort_order (sort_order)
@@ -176,6 +178,15 @@ class Database {
 
 		if ( self::column_exists( $customer_table, 'points' ) && self::column_exists( $customer_table, 'balance' ) ) {
 			$wpdb->query( 'UPDATE ' . $customer_table . ' SET balance = points WHERE balance = 0 AND points <> 0' );
+		}
+
+		$rewards_table = self::get_table_name( self::TABLE_SUFFIX_REWARDS );
+		if ( self::column_exists( $rewards_table, 'visible_in_checkout' ) ) {
+			$stored_version = (string) get_option( self::SCHEMA_VERSION_OPTION, '0.0.0' );
+			if ( version_compare( $stored_version, '1.3.0', '<' ) ) {
+				$wpdb->query( 'UPDATE ' . $rewards_table . ' SET visible_in_checkout = active' );
+			}
+			$wpdb->query( 'UPDATE ' . $rewards_table . ' SET visible_in_checkout = 0 WHERE active = 0 AND visible_in_checkout = 1' );
 		}
 	}
 

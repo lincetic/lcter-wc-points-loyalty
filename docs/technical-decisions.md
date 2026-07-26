@@ -371,3 +371,10 @@ Una restauracion correcta toma el ciclo actual revertido, calcula `new_cycle = c
 La validacion de saldo de restauracion usa el saldo proyectado atomico: `projected_balance = current_balance + restored_earned_points - restored_redeemed_points`. La restauracion es valida cuando `projected_balance >= 0`, aunque `current_balance` sea menor que `restored_redeemed_points`. Si el proyectado es negativo, no se crea ninguna transaccion y se guardan `current_balance`, `restored_earned_points`, `restored_redeemed_points`, `projected_balance` y `missing_points`.
 
 Compatibilidad legacy: las claves antiguas `earned_order:{order_id}`, `redeemed_order:{order_id}`, `cancelled_order:{order_id}`, `refunded_order:{order_id}`, `failed_order:{order_id}` y `returned_redeemed_order:{order_id}:{status}` se tratan como ciclo 1. Las comprobaciones por `order_id + type` se conservan solo para reconocer datos anteriores del ciclo 1.
+# Catálogo de regalos
+
+Se eligió tabla WordPress equivalente a `WP_List_Table`, con formularios de
+edición por fila, para evitar depender de una API interna y mantener acciones
+POST simples, auditables y protegidas. El ajuste de límite usa Options/Settings
+API. La auditoría inicial usa el log PHP con administrador, producto, acción y
+estado previo; una tabla dedicada se difiere por coste arquitectónico.

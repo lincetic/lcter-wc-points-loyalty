@@ -12,6 +12,7 @@ namespace LCTER_WCPL\Services;
 use LCTER_WCPL\Repositories\Customer_Points_Repository;
 use LCTER_WCPL\Repositories\Order_Rewards_Repository;
 use LCTER_WCPL\Repositories\Rewards_Repository;
+use LCTER_WCPL\Settings;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -36,7 +37,28 @@ class Rewards_Service {
 	}
 
 	public function get_available_rewards(): array {
-		return $this->rewards->find_active( self::MAX_VISIBLE_REWARDS );
+		return $this->get_available_checkout_rewards();
+	}
+
+	public function get_available_checkout_rewards( ?int $limit = null ): array {
+		$limit   = null === $limit ? Settings::get_max_checkout_rewards() : max( 1, min( Settings::MAXIMUM_CHECKOUT_REWARDS, $limit ) );
+		return array_slice( $this->get_checkout_eligible_rewards(), 0, $limit );
+	}
+
+	public function get_checkout_eligible_rewards(): array {
+		$results = array();
+		foreach ( $this->rewards->find_checkout_candidates() as $reward ) {
+			$product = function_exists( 'wc_get_product' ) ? wc_get_product( (int) $reward['product_id'] ) : null;
+			if ( ! $product || 'publish' !== $product->get_status() || ! $product->is_purchasable() || ( $product->managing_stock() && ! $product->is_in_stock() ) ) {
+				continue;
+			}
+			$results[] = $reward;
+		}
+		return $results;
+	}
+
+	public function get_all_rewards(): array {
+		return $this->rewards->find_all();
 	}
 
 	public function get_reward( int $reward_id ): ?array {
@@ -57,6 +79,10 @@ class Rewards_Service {
 
 	public function deactivate_reward( int $reward_id ): bool {
 		return $this->rewards->deactivate( $reward_id );
+	}
+
+	public function update_reward_flags( int $reward_id, ?int $active = null, ?int $visible = null ): bool {
+		return $this->rewards->update_flags( $reward_id, $active, $visible );
 	}
 
 	public function get_customer_available_rewards( int $customer_id ): array {

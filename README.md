@@ -21,6 +21,8 @@ The plugin uses dedicated tables, atomic balance operations and database-backed 
 * One cent equals one point.
 * VAT included and shipping plus shipping tax excluded from earnings.
 * Configurable reward catalog with manual point costs and availability dates.
+* Central reward catalogue with independent checkout visibility, bulk actions,
+  stable ordering and a configurable checkout limit (12 by default).
 * Multiple rewards and multiple quantities in classic checkout.
 * Zero-priced order items clearly marked as pending or redeemed rewards.
 * Atomic balances with complete transaction history.

@@ -182,3 +182,9 @@ Incluye:
 * Entorno recomendado con Docker y WP-CLI.
 
 Estado parcial: configuraciones y primera suite unitaria añadidas; integracion WooCommerce, concurrencia, HPOS y reduccion progresiva de incidencias de analisis estatico siguen pendientes.
+# Catálogo centralizado — implementado
+
+Se añadió visibilidad independiente, migración 1.3.0, límite configurable,
+consulta efectiva única, página administrativa central, edición por fila,
+acciones masivas, resumen de capacidad y cobertura unitaria del servicio.
+Checkout Blocks continúa fuera de alcance.

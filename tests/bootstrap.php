@@ -8,6 +8,7 @@
 declare( strict_types=1 );
 
 define( 'ABSPATH', dirname( __DIR__ ) . '/' );
+define( 'LCTER_WCPL_TEXT_DOMAIN', 'lcter-wc-points-loyalty' );
 
 $root = dirname( __DIR__ );
 
@@ -49,7 +50,20 @@ if ( ! function_exists( 'add_filter' ) ) {
 	}
 }
 
+if ( ! function_exists( 'get_option' ) ) {
+	function get_option( string $name, $default = false ) {
+		return $GLOBALS['lcter_wcpl_test_options'][ $name ] ?? $default;
+	}
+}
+
+if ( ! function_exists( 'wc_get_product' ) ) {
+	function wc_get_product( int $product_id ) {
+		return $GLOBALS['lcter_wcpl_test_products'][ $product_id ] ?? false;
+	}
+}
+
 require_once $root . '/includes/class-database.php';
+require_once $root . '/includes/class-settings.php';
 require_once $root . '/includes/repositories/class-customer-points-repository.php';
 require_once $root . '/includes/repositories/class-transactions-repository.php';
 require_once $root . '/includes/repositories/class-transaction-manager.php';

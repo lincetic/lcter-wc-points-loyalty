@@ -165,3 +165,9 @@ Actor: administraciÃ³n con `manage_woocommerce`.
 8. Repetir la acciÃ³n no duplica movimientos por la clave `restored_order:{order_id}:cycle:{new_cycle}` ni por las claves `restored_earned_order`/`restored_redeemed_order` del mismo ciclo.
 
 Reglas: BR-008, BR-016, BR-020, BR-021, BR-022.
+# Gestionar el catálogo central
+
+Un administrador con `manage_woocommerce` puede buscar, filtrar y paginar
+rewards; editar estado, visibilidad, puntos, orden y fechas; o ejecutar acciones
+masivas para activar, desactivar, mostrar, ocultar y eliminar con confirmación.
+Todas las escrituras verifican nonce y pasan por `Rewards_Service`.

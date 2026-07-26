@@ -82,6 +82,15 @@ class Reward_Product_Admin {
 						'value'       => $reward ? 'yes' : 'no',
 					)
 				);
+				woocommerce_wp_checkbox(
+					array(
+						'id'            => 'lcter_wcpl_reward_visible',
+						'label'         => __( 'Visible en checkout', LCTER_WCPL_TEXT_DOMAIN ),
+						'description'   => __( 'Permite incluir el regalo activo en el catálogo del checkout.', LCTER_WCPL_TEXT_DOMAIN ),
+						'value'         => ! $reward || ! empty( $reward['visible_in_checkout'] ) ? 'yes' : 'no',
+						'wrapper_class' => 'lcter-wcpl-reward-field',
+					)
+				);
 				woocommerce_wp_text_input(
 					array(
 						'id'                => 'lcter_wcpl_reward_points_cost',
@@ -165,6 +174,7 @@ class Reward_Product_Admin {
 
 		$points_cost = isset( $_POST['lcter_wcpl_reward_points_cost'] ) ? absint( sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_reward_points_cost'] ) ) ) : 0;
 		$active      = isset( $_POST['lcter_wcpl_reward_active'] ) && 'yes' === sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_reward_active'] ) ) ? 1 : 0;
+		$visible     = $active && isset( $_POST['lcter_wcpl_reward_visible'] ) && 'yes' === sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_reward_visible'] ) ) ? 1 : 0;
 		$sort_order  = isset( $_POST['lcter_wcpl_reward_sort_order'] ) ? (int) sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_reward_sort_order'] ) ) : 0;
 		$starts_at   = $this->get_datetime_from_request( 'lcter_wcpl_reward_starts_at' );
 		$ends_at     = $this->get_datetime_from_request( 'lcter_wcpl_reward_ends_at' );
@@ -179,6 +189,7 @@ class Reward_Product_Admin {
 				'product_id'  => $product_id,
 				'points_cost' => $points_cost,
 				'active'      => $active,
+				'visible_in_checkout' => $visible,
 				'sort_order'  => $sort_order,
 				'starts_at'   => $starts_at,
 				'ends_at'     => $ends_at,

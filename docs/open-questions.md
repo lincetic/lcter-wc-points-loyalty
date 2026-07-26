@@ -70,3 +70,8 @@ Decisiones iniciales ya tomadas: PHPStan comienza en nivel 5; PHPCS aplica `Word
 6. ¿Cuándo y mediante qué proceso se retirarán las columnas o tablas legacy conservadas por las migraciones no destructivas?
 7. ¿Debe verificarse o convertirse explícitamente a InnoDB una instalación existente que use un motor sin transacciones?
 8. Resuelta para `cancelled` y `manual_adjustment`: no modifican `total_earned` ni `total_redeemed`, que permanecen como acumulados históricos brutos. La semántica de `refund` sigue pendiente.
+# Auditoría del catálogo
+
+Pendiente decidir si una versión futura necesita auditoría consultable y
+retención definida en una tabla propia. Esta fase registra cambios relevantes
+en el log de WordPress/PHP sin alterar el modelo histórico de pedidos.

@@ -132,3 +132,10 @@ Persistencia:
 * Una restauracion de movimientos se completa entera o no crea transacciones.
 * El ciclo contable empieza en 1 y solo avanza cuando una restauracion administrativa finaliza correctamente.
 * Los movimientos sin ciclo persistido o con claves legacy sin `:cycle:{n}` pertenecen al ciclo 1.
+# Estados del catálogo de regalos
+
+Un producto **configurado** tiene una fila `rewards`. `active` determina si
+admite nuevos canjes y `visible_in_checkout` si participa en el escaparate.
+**Disponible actualmente** añade fechas y validez del producto WooCommerce.
+**Incluido** significa además estar entre los primeros N por `sort_order, id`.
+La combinación inactivo/visible se normaliza a inactivo/oculto al guardar.

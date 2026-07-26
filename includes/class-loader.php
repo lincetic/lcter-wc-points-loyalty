@@ -99,6 +99,7 @@ class Loader {
 	public function admin_init(): void {
 		require_once LCTER_WCPL_INCLUDES_DIR . 'class-admin.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'admin/class-reward-product-admin.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'admin/class-reward-catalog-admin.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'admin/class-order-traceability-admin.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'admin/class-initial-bonus-admin.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'admin/class-order-processing-error-admin.php';
@@ -106,6 +107,7 @@ class Loader {
 		require_once LCTER_WCPL_INCLUDES_DIR . 'admin/class-customer-points-admin.php';
 		Admin::instance();
 		Admin_UI\Reward_Product_Admin::instance();
+		Admin_UI\Reward_Catalog_Admin::instance();
 		Admin_UI\Order_Traceability_Admin::instance();
 		Admin_UI\Initial_Bonus_Admin::instance();
 		Admin_UI\Order_Processing_Error_Admin::instance();
@@ -145,6 +147,15 @@ class Loader {
 			'manage_woocommerce',
 			'lcter-wcpl-settings',
 			array( 'LCTER_WCPL\Admin', 'render_settings' )
+		);
+
+		add_submenu_page(
+			'lcter-wcpl-dashboard',
+			__( 'Catálogo de regalos', LCTER_WCPL_TEXT_DOMAIN ),
+			__( 'Catálogo de regalos', LCTER_WCPL_TEXT_DOMAIN ),
+			'manage_woocommerce',
+			'lcter-wcpl-reward-catalog',
+			array( 'LCTER_WCPL\Admin_UI\Reward_Catalog_Admin', 'render_page' )
 		);
 	}
 
