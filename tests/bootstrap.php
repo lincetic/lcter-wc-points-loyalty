@@ -62,6 +62,55 @@ if ( ! function_exists( 'wc_get_product' ) ) {
 	}
 }
 
+if ( ! function_exists( 'admin_url' ) ) {
+	/**
+	 * Return a deterministic admin URL during isolated tests.
+	 */
+	function admin_url( string $path = '' ): string {
+		return 'https://example.test/wp-admin/' . ltrim( $path, '/' );
+	}
+}
+
+if ( ! function_exists( 'add_query_arg' ) ) {
+	/**
+	 * Minimal add_query_arg replacement for isolated URL tests.
+	 *
+	 * @param mixed  $key Query key or key/value map.
+	 * @param mixed  $value Query value or URL.
+	 * @param string $url Target URL.
+	 */
+	function add_query_arg( $key, $value = '', string $url = '' ): string {
+		$args = is_array( $key ) ? $key : array( (string) $key => $value );
+		if ( is_array( $key ) ) {
+			$url = (string) $value;
+		}
+		$parts = parse_url( $url );
+		$query = array();
+		parse_str( $parts['query'] ?? '', $query );
+		$query = array_merge( $query, $args );
+		$base  = ( $parts['scheme'] ?? 'https' ) . '://' . ( $parts['host'] ?? 'example.test' ) . ( $parts['path'] ?? '' );
+		return $base . '?' . http_build_query( $query, '', '&', PHP_QUERY_RFC3986 );
+	}
+}
+
+if ( ! function_exists( 'sanitize_key' ) ) {
+	function sanitize_key( string $key ): string {
+		return preg_replace( '/[^a-z0-9_\\-]/', '', strtolower( $key ) ) ?? '';
+	}
+}
+
+if ( ! function_exists( 'sanitize_text_field' ) ) {
+	function sanitize_text_field( string $value ): string {
+		return trim( strip_tags( $value ) );
+	}
+}
+
+if ( ! function_exists( 'wp_unslash' ) ) {
+	function wp_unslash( $value ) {
+		return is_string( $value ) ? stripslashes( $value ) : $value;
+	}
+}
+
 require_once $root . '/includes/class-database.php';
 require_once $root . '/includes/class-settings.php';
 require_once $root . '/includes/repositories/class-customer-points-repository.php';
@@ -76,3 +125,4 @@ require_once $root . '/includes/services/class-initial-bonus-service.php';
 require_once $root . '/includes/services/class-order-cancellation-service.php';
 require_once $root . '/includes/services/class-loyalty-movements-restoration-service.php';
 require_once $root . '/includes/adapters/class-woocommerce-checkout-adapter.php';
+require_once $root . '/includes/admin/class-reward-catalog-admin.php';

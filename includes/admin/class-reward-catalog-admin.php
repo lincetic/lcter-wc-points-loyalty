@@ -134,6 +134,7 @@ class Reward_Catalog_Admin {
 		$page      = max( 1, isset( $_GET['paged'] ) ? absint( wp_unslash( $_GET['paged'] ) ) : 1 );
 		$rows      = array_slice( $all, ( $page - 1 ) * $per_page, $per_page );
 		$visible   = count( $effective );
+		$pagination_base = self::get_pagination_base( $_GET );
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Catálogo de regalos', LCTER_WCPL_TEXT_DOMAIN ); ?></h1>
@@ -150,9 +151,48 @@ class Reward_Catalog_Admin {
 				<?php foreach ( $rows as $reward ) : self::render_row( $reward, isset( $inside[ (int) $reward['id'] ] ), isset( $eligible[ (int) $reward['id'] ] ) ); endforeach; ?>
 				<?php if ( empty( $rows ) ) : ?><tr><td colspan="10"><?php esc_html_e( 'No se encontraron regalos.', LCTER_WCPL_TEXT_DOMAIN ); ?></td></tr><?php endif; ?>
 				</tbody></table>
-			<?php echo wp_kses_post( paginate_links( array( 'total' => max( 1, (int) ceil( $total / $per_page ) ), 'current' => $page ) ) ); ?>
+			<?php
+			echo wp_kses_post(
+				paginate_links(
+					array(
+						'base'      => $pagination_base,
+						'format'    => '',
+						'total'     => max( 1, (int) ceil( $total / $per_page ) ),
+						'current'   => $page,
+						'prev_text' => __( '&laquo; Anterior', LCTER_WCPL_TEXT_DOMAIN ),
+						'next_text' => __( 'Siguiente &raquo;', LCTER_WCPL_TEXT_DOMAIN ),
+					)
+				)
+			);
+			?>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Build an admin query-string pagination base while preserving current filters.
+	 *
+	 * @param array $request Current query arguments.
+	 * @return string Pagination URL containing the paginate_links placeholder.
+	 */
+	public static function get_pagination_base( array $request ): string {
+		$query_args = array(
+			'page' => 'lcter-wcpl-reward-catalog',
+		);
+
+		foreach ( $request as $key => $value ) {
+			$key = sanitize_key( (string) $key );
+			if ( '' === $key || 'page' === $key || 'paged' === $key || ! is_scalar( $value ) ) {
+				continue;
+			}
+
+			$query_args[ $key ] = sanitize_text_field( wp_unslash( (string) $value ) );
+		}
+
+		$base = add_query_arg( $query_args, admin_url( 'admin.php' ) );
+		$base = add_query_arg( 'paged', 999999999, $base );
+
+		return str_replace( '999999999', '%#%', $base );
 	}
 
 	private static function filter_rows( array $rows, array $inside, array $eligible ): array {
