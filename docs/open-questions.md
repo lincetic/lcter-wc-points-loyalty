@@ -75,3 +75,8 @@ Decisiones iniciales ya tomadas: PHPStan comienza en nivel 5; PHPCS aplica `Word
 Pendiente decidir si una versión futura necesita auditoría consultable y
 retención definida en una tabla propia. Esta fase registra cambios relevantes
 en el log de WordPress/PHP sin alterar el modelo histórico de pedidos.
+# Validación HPOS en staging
+
+La prueba automatizada no sustituye una ejecución con WooCommerce y base de
+datos reales. Queda pendiente registrar fecha, versiones, pasarelas y evidencia
+de la matriz manual HPOS descrita en `docs/testing.md`.

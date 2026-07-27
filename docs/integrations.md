@@ -93,3 +93,9 @@ No está documentado todavía:
 * Paginación, consultas incrementales y política de retención para historiales grandes.
 
 Estas dudas están recogidas en `docs/open-questions.md`.
+# WooCommerce HPOS
+
+Compatibilidad declarada para `custom_order_tables`. Los hooks de pago, estados,
+reembolso completo, checkout clásico y administración recuperan o reciben un
+`WC_Order`; los metadatos de línea usan `WC_Order_Item`. No se consulta
+`wp_posts`, `wp_postmeta` ni las tablas físicas HPOS.

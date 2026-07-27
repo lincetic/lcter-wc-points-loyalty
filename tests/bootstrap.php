@@ -62,6 +62,15 @@ if ( ! function_exists( 'wc_get_product' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wc_get_order' ) ) {
+	/**
+	 * Return a deterministic WC_Order test double by ID.
+	 */
+	function wc_get_order( int $order_id ) {
+		return $GLOBALS['lcter_wcpl_test_orders'][ $order_id ] ?? false;
+	}
+}
+
 if ( ! function_exists( 'admin_url' ) ) {
 	/**
 	 * Return a deterministic admin URL during isolated tests.
@@ -111,8 +120,19 @@ if ( ! function_exists( 'wp_unslash' ) ) {
 	}
 }
 
+if ( ! function_exists( '__' ) ) {
+	/**
+	 * Return untranslated test text.
+	 */
+	function __( string $text, string $domain = 'default' ): string {
+		unset( $domain );
+		return $text;
+	}
+}
+
 require_once $root . '/includes/class-database.php';
 require_once $root . '/includes/class-settings.php';
+require_once $root . '/includes/class-hpos-compatibility.php';
 require_once $root . '/includes/repositories/class-customer-points-repository.php';
 require_once $root . '/includes/repositories/class-transactions-repository.php';
 require_once $root . '/includes/repositories/class-transaction-manager.php';
@@ -125,4 +145,5 @@ require_once $root . '/includes/services/class-initial-bonus-service.php';
 require_once $root . '/includes/services/class-order-cancellation-service.php';
 require_once $root . '/includes/services/class-loyalty-movements-restoration-service.php';
 require_once $root . '/includes/adapters/class-woocommerce-checkout-adapter.php';
+require_once $root . '/includes/adapters/class-woocommerce-orders-adapter.php';
 require_once $root . '/includes/admin/class-reward-catalog-admin.php';

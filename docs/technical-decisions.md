@@ -378,3 +378,17 @@ edición por fila, para evitar depender de una API interna y mantener acciones
 POST simples, auditables y protegidas. El ajuste de límite usa Options/Settings
 API. La auditoría inicial usa el log PHP con administrador, producto, acción y
 estado previo; una tabla dedicada se difiere por coste arquitectónico.
+# Auditoría HPOS
+
+La búsqueda completa de APIs WordPress de posts/metadatos no encontró accesos
+directos a pedidos. Clasificación:
+
+* A: `$post->ID` en `Reward_Product_Admin` pertenece al producto WooCommerce;
+  `$user->ID` en `Customer_Points_Admin` pertenece al usuario.
+* B: ninguna coincidencia de pedidos necesitó migración.
+* C: la capability `edit_shop_order` no accede al almacenamiento y se conserva,
+  acompañada de `manage_woocommerce`.
+
+La declaración `custom_order_tables` se registra en `before_woocommerce_init`
+mediante `FeaturesUtil`, después de verificar que la clase existe. Se aisló en
+`HPOS_Compatibility` para probar tanto ausencia como presencia de WooCommerce.

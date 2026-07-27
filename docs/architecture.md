@@ -155,3 +155,11 @@ Si el pedido nunca se paga, no se descuentan puntos. No se implementa reserva de
 `Rewards_Service` centraliza disponibilidad y normalización; y
 `Rewards_Repository` conserva todo SQL. El checkout y la revalidación de pago
 consumen el mismo método del servicio, evitando reglas duplicadas.
+# Compatibilidad HPOS
+
+La integración de pedidos utiliza `wc_get_order()`, `WC_Order` y
+`WC_Order_Item`: getters oficiales, `get_meta()`, `update_meta_data()`,
+`delete_meta_data()`, `get_items()`, `add_order_note()` y `save()`. No existe
+una implementación paralela para legacy; el data store de WooCommerce abstrae
+ambos almacenamientos. Los hooks `woocommerce_admin_order_data_after_payment_info`
+reciben el objeto de pedido y funcionan en las pantallas legacy y HPOS.

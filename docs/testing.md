@@ -391,3 +391,24 @@ del orden y exclusión de productos eliminados, no publicados, no comprables o
 sin stock. La suite de checkout existente comprueba la revalidación en pago.
 Debe completarse en integración WordPress la matriz de migración, fechas y
 acciones administrativas con nonce/capacidad.
+# Prueba manual HPOS obligatoria
+
+En staging: activar HPOS como almacenamiento autoritativo y desactivar el modo
+de compatibilidad/sincronización. Verificar:
+
+1. Pedido pagado sin regalo y con regalo.
+2. Acumulación, canje y email `processing` con `REGALO: CANJEADO`.
+3. Cancelación con reversión completa.
+4. `cancelled → processing`, restauración explícita, segundo ciclo y cancelación.
+5. Reembolso total manual y automático de pasarela cuando esté disponible.
+6. Trazabilidad administrativa, notas y emails de procesamiento, cancelación y
+   reembolso.
+7. Pedidos creados antes de activar HPOS.
+8. Movimientos en las cuatro tablas propias y lectura correcta con
+   `wp_postmeta` sin sincronizar.
+
+Automatización: `HPOSCompatibilityTest` cubre la declaración segura con y sin
+`FeaturesUtil`; `WooCommerceOrdersAdapterCRUDTest` cubre lectura, escritura,
+guardado, ciclo contable y metadatos de línea mediante CRUD. Las suites de
+puntos, cancelación, restauración y checkout cubren reembolso, múltiples hooks,
+idempotencia y ciclos.

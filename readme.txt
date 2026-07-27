@@ -100,3 +100,5 @@ Initial development release.
 = 0.1.0 =
 
 * Initial development release.
+HPOS compatible. Orders and order items are accessed through WooCommerce CRUD,
+including installations where compatibility synchronization is disabled.

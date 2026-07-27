@@ -27,6 +27,15 @@ if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
 	require_once __DIR__ . '/vendor/autoload.php';
 }
 
+require_once __DIR__ . '/includes/class-hpos-compatibility.php';
+
+add_action(
+	'before_woocommerce_init',
+	static function (): void {
+		LCTER_WCPL\HPOS_Compatibility::declare( __FILE__ );
+	}
+);
+
 // Define plugin constants.
 define( 'LCTER_WCPL_VERSION', '0.1.0' );
 define( 'LCTER_WCPL_PLUGIN_FILE', __FILE__ );

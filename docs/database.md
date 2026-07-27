@@ -164,3 +164,9 @@ visibilidad en checkout de `active`. La migración no destructiva copia `active`
 la nueva columna para filas anteriores y normaliza a cero toda fila inactiva.
 Se añade un índice independiente; `product_id` continúa siendo único y
 `order_rewards` no se modifica.
+# HPOS y tablas propias
+
+`order_id` es una referencia lógica opaca a un pedido WooCommerce; no presupone
+que exista en `wp_posts`. No hay claves foráneas ni joins contra tablas legacy o
+tablas físicas HPOS. `customer_points`, `transactions`, `rewards` y
+`order_rewards` permanecen bajo responsabilidad del plugin.

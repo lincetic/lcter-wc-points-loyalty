@@ -188,3 +188,8 @@ Se añadió visibilidad independiente, migración 1.3.0, límite configurable,
 consulta efectiva única, página administrativa central, edición por fila,
 acciones masivas, resumen de capacidad y cobertura unitaria del servicio.
 Checkout Blocks continúa fuera de alcance.
+# HPOS
+
+Auditoría de código, declaración oficial y pruebas CRUD automatizadas
+implementadas. Pendiente únicamente ejecutar y documentar la matriz manual en
+staging con modo de compatibilidad desactivado.

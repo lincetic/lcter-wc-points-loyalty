@@ -2,6 +2,10 @@
 
 WooCommerce loyalty points and configurable reward redemption.
 
+Compatible with WooCommerce High-Performance Order Storage (HPOS), including
+HPOS authoritative mode with compatibility synchronization disabled. Order
+access uses WooCommerce CRUD APIs and remains compatible with legacy storage.
+
 ## Overview
 
 LCTER WC Points Loyalty awards points to registered customers after successful WooCommerce payments. Customers can redeem their existing balance for products configured as rewards during the classic checkout.
