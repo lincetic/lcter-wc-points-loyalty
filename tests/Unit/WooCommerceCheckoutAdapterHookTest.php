@@ -55,6 +55,77 @@ final class WooCommerceCheckoutAdapterHookTest extends TestCase {
 	}
 
 	/**
+	 * The checkout requests the generated thumbnail and allows WooCommerce's placeholder.
+	 */
+	public function test_reward_thumbnail_uses_woocommerce_size_accessible_alt_and_placeholder(): void {
+		$product = new class() {
+			/** @var array<int,mixed> */
+			public array $image_arguments = array();
+
+			public function get_name(): string {
+				return 'Taza & regalo';
+			}
+
+			public function get_image( $size, $attributes, $placeholder ): string {
+				$this->image_arguments = array( $size, $attributes, $placeholder );
+
+				return '<img src="thumbnail.jpg" alt="Taza &amp; regalo" class="lcter-wcpl-reward-image" />';
+			}
+		};
+
+		$html = $this->invoke_thumbnail_renderer( $product );
+
+		self::assertSame( 'woocommerce_thumbnail', $product->image_arguments[0] );
+		self::assertSame( 'Taza & regalo', $product->image_arguments[1]['alt'] );
+		self::assertSame( 'lazy', $product->image_arguments[1]['loading'] );
+		self::assertTrue( $product->image_arguments[2] );
+		self::assertStringContainsString( 'thumbnail.jpg', $html );
+	}
+
+	/**
+	 * A product without an image returns the standard placeholder rather than broken markup.
+	 */
+	public function test_reward_without_image_keeps_woocommerce_placeholder(): void {
+		$product = new class() {
+			public function get_name(): string {
+				return 'Regalo sin imagen';
+			}
+
+			public function get_image( $size, $attributes, $placeholder ): string {
+				unset( $size, $attributes );
+
+				return $placeholder ? '<img src="woocommerce-placeholder.png" alt="Regalo sin imagen" />' : '';
+			}
+		};
+
+		self::assertStringContainsString( 'woocommerce-placeholder.png', $this->invoke_thumbnail_renderer( $product ) );
+	}
+
+	/**
+	 * Reward images remain compact on mobile and visible in disabled cards.
+	 */
+	public function test_reward_thumbnail_styles_cover_mobile_and_disabled_states(): void {
+		$css = file_get_contents( dirname( __DIR__, 2 ) . '/assets/css/frontend.css' );
+
+		self::assertIsString( $css );
+		self::assertStringContainsString( 'object-fit: cover', $css );
+		self::assertStringContainsString( '@media (max-width: 480px)', $css );
+		self::assertStringContainsString( '.lcter-wcpl-reward-option.is-disabled .lcter-wcpl-reward-thumbnail', $css );
+		self::assertStringContainsString( 'visibility: visible', $css );
+	}
+
+	/**
+	 * Invoke the private renderer without widening the adapter's public API.
+	 *
+	 * @param object $product Product test double.
+	 */
+	private function invoke_thumbnail_renderer( object $product ): string {
+		$method = new \ReflectionMethod( WooCommerce_Checkout_Adapter::class, 'get_reward_thumbnail_html' );
+
+		return $method->invoke( new WooCommerce_Checkout_Adapter(), $product );
+	}
+
+	/**
 	 * Find a captured action registration.
 	 *
 	 * @param string $hook_name Hook name.

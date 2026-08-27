@@ -174,6 +174,8 @@ Casos de carrito y pedido:
 
 Alcance: estas pruebas corresponden al checkout clásico. Checkout Blocks queda pendiente.
 
+El selector comprueba además que cada reward solicita `woocommerce_thumbnail`, aporta el nombre del producto como texto alternativo y habilita el placeholder nativo. La revisión responsive debe confirmar en móvil que la imagen conserva proporción, no desborda la tarjeta ni desplaza excesivamente el control de cantidad, y que sigue visible cuando el reward está deshabilitado por saldo insuficiente.
+
 ## Pruebas De Clientify
 
 Casos:

@@ -28,6 +28,7 @@ The plugin uses dedicated tables, atomic balance operations and database-backed 
 * Central reward catalogue with independent checkout visibility, bulk actions,
   stable ordering and a configurable checkout limit (12 by default).
 * Multiple rewards and multiple quantities in classic checkout.
+* Responsive product thumbnails with WooCommerce placeholders in the reward selector.
 * Zero-priced order items clearly marked as pending or redeemed rewards.
 * Atomic balances with complete transaction history.
 * Idempotent earning, redemption, initial bonus and cancellation operations.

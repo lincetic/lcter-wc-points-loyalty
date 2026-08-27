@@ -373,6 +373,8 @@ La validacion de saldo de restauracion usa el saldo proyectado atomico: `project
 Compatibilidad legacy: las claves antiguas `earned_order:{order_id}`, `redeemed_order:{order_id}`, `cancelled_order:{order_id}`, `refunded_order:{order_id}`, `failed_order:{order_id}` y `returned_redeemed_order:{order_id}:{status}` se tratan como ciclo 1. Las comprobaciones por `order_id + type` se conservan solo para reconocer datos anteriores del ciclo 1.
 # Catálogo de regalos
 
+El selector del checkout obtiene la miniatura directamente del `WC_Product` asociado mediante `WC_Product::get_image()` con el tamaño `woocommerce_thumbnail`. Se mantiene activado el placeholder estándar de WooCommerce cuando no existe imagen destacada; no se persisten URLs ni adjuntos adicionales en las tablas del plugin.
+
 Se eligió tabla WordPress equivalente a `WP_List_Table`, con formularios de
 edición por fila, para evitar depender de una API interna y mantener acciones
 POST simples, auditables y protegidas. El ajuste de límite usa Options/Settings

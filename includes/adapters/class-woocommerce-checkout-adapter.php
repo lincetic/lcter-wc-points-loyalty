@@ -133,14 +133,19 @@ class WooCommerce_Checkout_Adapter {
 							$quantity     = $posted_quantities[ $reward_id ] ?? 0;
 							?>
 							<label class="lcter-wcpl-reward-option">
-								<span><?php echo esc_html( $product->get_name() ); ?></span>
-								<span>
+								<span class="lcter-wcpl-reward-thumbnail">
+									<?php echo $this->get_reward_thumbnail_html( $product ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Sanitized by wp_kses_post(). ?>
+								</span>
+								<span class="lcter-wcpl-reward-details">
+									<span class="lcter-wcpl-reward-name"><?php echo esc_html( $product->get_name() ); ?></span>
+									<span class="lcter-wcpl-reward-cost">
 									<?php
 									printf(
 										esc_html__( '%s puntos por unidad', LCTER_WCPL_TEXT_DOMAIN ),
 										esc_html( number_format_i18n( $points_cost ) )
 									);
 									?>
+									</span>
 								</span>
 								<input
 									type="number"
@@ -157,6 +162,25 @@ class WooCommerce_Checkout_Adapter {
 			<?php endif; ?>
 		</section>
 		<?php
+	}
+
+	/**
+	 * Build a compact product thumbnail with WooCommerce's native placeholder fallback.
+	 *
+	 * @param object $product WooCommerce product.
+	 */
+	private function get_reward_thumbnail_html( $product ): string {
+		$image = $product->get_image(
+			'woocommerce_thumbnail',
+			array(
+				'class'   => 'lcter-wcpl-reward-image',
+				'alt'     => $product->get_name(),
+				'loading' => 'lazy',
+			),
+			true
+		);
+
+		return wp_kses_post( $image );
 	}
 
 	public function process_checkout_selection(): void {
