@@ -29,6 +29,8 @@ The plugin has been designed with scalability and performance in mind by using d
 * Points calculated from order total including VAT and excluding shipping.
 * Configurable reward catalog.
 * Multiple reward redemption.
+* Live earned-points estimate in cart and classic checkout.
+* Shared-balance reward selector with local feedback and checkout AJAX support.
 * Protection against negative balances.
 * Complete transaction history.
 * Initial bonus campaigns.

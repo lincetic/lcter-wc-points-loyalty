@@ -163,3 +163,8 @@ La integración de pedidos utiliza `wc_get_order()`, `WC_Order` y
 una implementación paralela para legacy; el data store de WooCommerce abstrae
 ambos almacenamientos. Los hooks `woocommerce_admin_order_data_after_payment_info`
 reciben el objeto de pedido y funcionan en las pantallas legacy y HPOS.
+# UX De Compra Clásica
+
+`Purchase_Points_Calculator` es la fuente única del importe elegible para carrito, checkout y pedido pagado. Los adaptadores solo extraen los tres importes desde `WC_Cart` o `WC_Order`.
+
+`reward-selection.js` contiene el cálculo puro de saldo compartido. `checkout.js` enlaza ese cálculo con el DOM mediante handlers delegados y conserva temporalmente la selección durante `update_checkout`/`updated_checkout`. Ningún valor calculado en navegador sustituye la validación de `Reward_Redemption_Service`.

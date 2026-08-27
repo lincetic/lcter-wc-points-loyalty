@@ -394,3 +394,8 @@ directos a pedidos. Clasificación:
 La declaración `custom_order_tables` se registra en `before_woocommerce_init`
 mediante `FeaturesUtil`, después de verificar que la clase existe. Se aisló en
 `HPOS_Compatibility` para probar tanto ausencia como presencia de WooCommerce.
+# TD-030 - Estimación Compartida Y Estado Del Selector
+
+Decisión: `Purchase_Points_Calculator` recibe total, portes e IVA de portes y devuelve centavos elegibles. El pedido pagado y las vistas de carrito/checkout usan exactamente esta clase para evitar divergencias.
+
+El selector se mejora progresivamente: PHP entrega un catálogo funcional y valida siempre la petición; JavaScript oculta o muestra, limpia cantidades al no canjear, calcula el saldo global y restaura una selección válida después de los fragments AJAX. Los handlers son delegados y tienen namespace para impedir duplicados.

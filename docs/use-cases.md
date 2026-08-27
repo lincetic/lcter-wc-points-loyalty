@@ -171,3 +171,13 @@ Un administrador con `manage_woocommerce` puede buscar, filtrar y paginar
 rewards; editar estado, visibilidad, puntos, orden y fechas; o ejecutar acciones
 masivas para activar, desactivar, mostrar, ocultar y eliminar con confirmación.
 Todas las escrituras verifican nonce y pasan por `Rewards_Service`.
+# UC-015 - Consultar Y Seleccionar Fidelización En Compra
+
+1. Carrito y checkout muestran antes del total los puntos estimados mediante la misma calculadora usada al pagar.
+2. El checkout selecciona por defecto no canjear y mantiene oculto el catálogo.
+3. Al elegir canjear, el cliente ve saldo disponible, puntos seleccionados y saldo restante.
+4. Cada cambio redistribuye el saldo entre todos los rewards y limita únicamente nuevas unidades.
+5. `updated_checkout` restaura la selección que siga siendo válida y vuelve a calcular la interfaz.
+6. Al enviar, PHP revalida la selección completa y muestra cualquier error también junto al catálogo.
+
+Reglas: BR-004, BR-005, BR-006, BR-024.

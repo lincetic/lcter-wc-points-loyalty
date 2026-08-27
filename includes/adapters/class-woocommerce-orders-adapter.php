@@ -11,6 +11,7 @@ namespace LCTER_WCPL\Adapters;
 
 use LCTER_WCPL\Services\Order_Cancellation_Service;
 use LCTER_WCPL\Services\Points_Service;
+use LCTER_WCPL\Services\Purchase_Points_Calculator;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -42,10 +43,12 @@ class WooCommerce_Orders_Adapter {
 
 	private Points_Service $points_service;
 	private Order_Cancellation_Service $cancellation_service;
+	private Purchase_Points_Calculator $points_calculator;
 
-	public function __construct( ?Points_Service $points_service = null, ?Order_Cancellation_Service $cancellation_service = null ) {
+	public function __construct( ?Points_Service $points_service = null, ?Order_Cancellation_Service $cancellation_service = null, ?Purchase_Points_Calculator $points_calculator = null ) {
 		$this->points_service       = $points_service ?? new Points_Service();
 		$this->cancellation_service = $cancellation_service ?? new Order_Cancellation_Service( $this->points_service );
+		$this->points_calculator    = $points_calculator ?? new Purchase_Points_Calculator();
 	}
 
 	public function register_hooks(): void {
@@ -105,11 +108,11 @@ class WooCommerce_Orders_Adapter {
 	}
 
 	public function calculate_points_for_order( $order ): int {
-		$order_total_cents = $this->amount_to_cents( $order->get_total() );
-		$shipping_cents    = $this->amount_to_cents( $order->get_shipping_total() );
-		$shipping_tax      = $this->amount_to_cents( $order->get_shipping_tax() );
-
-		return max( 0, $order_total_cents - $shipping_cents - $shipping_tax );
+		return $this->points_calculator->calculate(
+			$order->get_total(),
+			$order->get_shipping_total(),
+			$order->get_shipping_tax()
+		);
 	}
 
 	/**
@@ -297,15 +300,6 @@ class WooCommerce_Orders_Adapter {
 		$order->add_order_note(
 			__( 'No se pudieron revertir los puntos del pedido. Revision operativa necesaria antes de cerrar la cancelacion o reembolso.', LCTER_WCPL_TEXT_DOMAIN )
 		);
-	}
-
-	/**
-	 * Convert a WooCommerce monetary amount to cents using the documented rate.
-	 *
-	 * @param mixed $amount Monetary amount.
-	 */
-	private function amount_to_cents( $amount ): int {
-		return (int) round( (float) $amount * self::POINTS_PER_CURRENCY_UNIT );
 	}
 
 	public static function order_has_pending_reversed_movements( $order ): bool {

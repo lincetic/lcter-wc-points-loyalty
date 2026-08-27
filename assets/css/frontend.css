@@ -41,6 +41,45 @@
     border-radius: 4px;
 }
 
+.lcter-wcpl-earned-points small {
+    display: block;
+    margin-top: 0.25rem;
+    font-weight: 400;
+}
+
+.lcter-wcpl-reward-catalog[hidden] {
+    display: none;
+}
+
+.lcter-wcpl-redemption-summary {
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: #f7f7f7;
+    border-radius: 4px;
+}
+
+.lcter-wcpl-redemption-summary p {
+    margin: 0.25rem 0;
+}
+
+.lcter-wcpl-reward-feedback {
+    min-height: 1.5em;
+    margin: 0.75rem 0 0;
+}
+
+.lcter-wcpl-reward-feedback.is-error {
+    color: #b32d2e;
+}
+
+.lcter-wcpl-reward-feedback.is-valid {
+    color: #277a35;
+}
+
+.lcter-wcpl-reward-availability {
+    display: block;
+    font-size: 0.875em;
+}
+
 .lcter-wcpl-checkout-rewards > label,
 .lcter-wcpl-reward-option {
     display: block;

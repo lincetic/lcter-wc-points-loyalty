@@ -22,6 +22,7 @@ final class WooCommerceCheckoutAdapterHookTest extends TestCase {
 	protected function setUp(): void {
 		$GLOBALS['lcter_wcpl_test_actions'] = array();
 		$GLOBALS['lcter_wcpl_test_filters'] = array();
+		$GLOBALS['lcter_wcpl_test_woocommerce'] = (object) array( 'cart' => null, 'session' => null );
 	}
 
 	/**
@@ -52,6 +53,39 @@ final class WooCommerceCheckoutAdapterHookTest extends TestCase {
 			self::assertSame( 1, $registration['priority'], $hook_name );
 			self::assertSame( 1, $registration['accepted_args'], $hook_name );
 		}
+	}
+
+	/**
+	 * The same estimate renderer is attached immediately before both order totals.
+	 */
+	public function test_earning_estimate_is_registered_for_cart_and_checkout(): void {
+		$adapter = new WooCommerce_Checkout_Adapter();
+		$adapter->register_hooks();
+
+		self::assertNotNull( $this->find_action( 'woocommerce_cart_totals_before_order_total', 'render_earning_estimate' ) );
+		self::assertNotNull( $this->find_action( 'woocommerce_review_order_before_order_total', 'render_earning_estimate' ) );
+	}
+
+	/**
+	 * The totals row uses the shared rule and excludes shipping and its tax.
+	 */
+	public function test_earning_estimate_outputs_shared_calculation(): void {
+		$GLOBALS['lcter_wcpl_test_woocommerce']->cart = new class() {
+			public function get_total( string $context ): string {
+				unset( $context );
+				return '72.25';
+			}
+			public function get_shipping_total(): string { return '10.00'; }
+			public function get_shipping_tax(): string { return '2.10'; }
+		};
+
+		ob_start();
+		( new WooCommerce_Checkout_Adapter() )->render_earning_estimate();
+		$html = (string) ob_get_clean();
+
+		self::assertStringContainsString( 'Puntos que conseguirás', $html );
+		self::assertStringContainsString( '6.015', $html );
+		self::assertStringContainsString( 'cuando el pedido haya sido pagado', $html );
 	}
 
 	/**

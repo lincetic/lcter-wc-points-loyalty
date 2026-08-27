@@ -27,6 +27,8 @@ Implementado:
 * Consulta de saldo desde servicios, fachada y frontend de cliente.
 * Catálogo de hasta 12 rewards activos, con coste manual, orden y fechas.
 * Canje de uno o varios regalos y cantidades múltiples en checkout clásico.
+* Estimación de puntos en carrito y checkout usando la misma regla del pedido pagado.
+* Selector progresivo con saldo compartido, resumen, feedback local y soporte AJAX del checkout clásico.
 * Regalos a coste cero con estados `reward_selected` y `reward_redeemed`.
 * Transacciones con `balance_before`, `balance_after` e idempotencia.
 * Trazabilidad de `order_rewards` por pedido y cliente.

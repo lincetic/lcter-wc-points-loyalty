@@ -201,3 +201,8 @@ cuando este se gestiona; orden `sort_order ASC, id ASC`; límite configurable
 entre 1 y 50 (12 por defecto). La misma selección se vuelve a validar al enviar
 el checkout y antes del canje pagado. Desactivar u ocultar conserva coste, orden,
 fechas e historial.
+# BR-024 - Estimación Y Selección En Checkout
+
+Carrito, checkout y pedido pagado calculan los puntos generados con la misma regla compartida: total con IVA y descuentos menos portes e IVA de portes. La estimación no financia el canje del pedido actual.
+
+El catálogo permanece oculto mientras se elige no canjear. La suma de todas las cantidades seleccionadas nunca puede superar el saldo existente; JavaScript ofrece feedback inmediato y el servidor vuelve a validar catálogo, producto, stock, costes, cantidades y saldo conjunto.

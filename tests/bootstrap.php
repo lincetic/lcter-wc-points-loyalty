@@ -71,6 +71,12 @@ if ( ! function_exists( 'wc_get_order' ) ) {
 	}
 }
 
+if ( ! function_exists( 'WC' ) ) {
+	function WC() {
+		return $GLOBALS['lcter_wcpl_test_woocommerce'] ?? (object) array( 'cart' => null, 'session' => null );
+	}
+}
+
 if ( ! function_exists( 'admin_url' ) ) {
 	/**
 	 * Return a deterministic admin URL during isolated tests.
@@ -136,6 +142,32 @@ if ( ! function_exists( '__' ) ) {
 	}
 }
 
+if ( ! function_exists( 'esc_html' ) ) {
+	function esc_html( $text ): string {
+		return htmlspecialchars( (string) $text, ENT_QUOTES, 'UTF-8' );
+	}
+}
+
+if ( ! function_exists( 'esc_html_e' ) ) {
+	function esc_html_e( string $text, string $domain = 'default' ): void {
+		unset( $domain );
+		echo esc_html( $text );
+	}
+}
+
+if ( ! function_exists( 'esc_attr__' ) ) {
+	function esc_attr__( string $text, string $domain = 'default' ): string {
+		unset( $domain );
+		return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
+	}
+}
+
+if ( ! function_exists( 'number_format_i18n' ) ) {
+	function number_format_i18n( $number, int $decimals = 0 ): string {
+		return number_format( (float) $number, $decimals, ',', '.' );
+	}
+}
+
 require_once $root . '/includes/class-database.php';
 require_once $root . '/includes/class-settings.php';
 require_once $root . '/includes/class-hpos-compatibility.php';
@@ -145,6 +177,7 @@ require_once $root . '/includes/repositories/class-transaction-manager.php';
 require_once $root . '/includes/repositories/class-rewards-repository.php';
 require_once $root . '/includes/repositories/class-order-rewards-repository.php';
 require_once $root . '/includes/services/class-points-service.php';
+require_once $root . '/includes/services/class-purchase-points-calculator.php';
 require_once $root . '/includes/services/class-rewards-service.php';
 require_once $root . '/includes/services/class-reward-redemption-service.php';
 require_once $root . '/includes/services/class-initial-bonus-service.php';

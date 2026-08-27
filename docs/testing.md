@@ -414,3 +414,6 @@ Automatización: `HPOSCompatibilityTest` cubre la declaración segura con y sin
 guardado, ciclo contable y metadatos de línea mediante CRUD. Las suites de
 puntos, cancelación, restauración y checkout cubren reembolso, múltiples hooks,
 idempotencia y ciclos.
+# UX De Compra Clásica
+
+La suite automatizada cubre la calculadora compartida con 60,15 EUR y exclusión de portes, registro de los hooks de carrito/checkout, catálogo oculto y feedback local, handlers `update_checkout`/`updated_checkout`, saldo conjunto 20.000 con rewards de 8.000/5.000/4.000, rehabilitación al reducir y rechazo PHP de saldo o stock insuficientes. Las pruebas JavaScript se ejecutan con `node --test tests/js/reward-selection.test.js`.

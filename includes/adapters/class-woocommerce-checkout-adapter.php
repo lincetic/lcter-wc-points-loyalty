@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace LCTER_WCPL\Adapters;
 
 use LCTER_WCPL\Services\Points_Service;
+use LCTER_WCPL\Services\Purchase_Points_Calculator;
 use LCTER_WCPL\Services\Reward_Redemption_Service;
 use LCTER_WCPL\Services\Rewards_Service;
 
@@ -33,19 +34,24 @@ class WooCommerce_Checkout_Adapter {
 	private Reward_Redemption_Service $redemption;
 	private Rewards_Service $rewards;
 	private Points_Service $points;
+	private Purchase_Points_Calculator $points_calculator;
 
 	public function __construct(
 		?Reward_Redemption_Service $redemption = null,
 		?Rewards_Service $rewards = null,
-		?Points_Service $points = null
+		?Points_Service $points = null,
+		?Purchase_Points_Calculator $points_calculator = null
 	) {
 		$this->redemption = $redemption ?? new Reward_Redemption_Service();
 		$this->rewards    = $rewards ?? new Rewards_Service();
 		$this->points     = $points ?? new Points_Service();
+		$this->points_calculator = $points_calculator ?? new Purchase_Points_Calculator();
 	}
 
 	public function register_hooks(): void {
 		add_action( 'woocommerce_after_order_notes', array( $this, 'render_reward_selector' ), 20, 1 );
+		add_action( 'woocommerce_cart_totals_before_order_total', array( $this, 'render_earning_estimate' ), 10, 0 );
+		add_action( 'woocommerce_review_order_before_order_total', array( $this, 'render_earning_estimate' ), 10, 0 );
 		add_action( 'woocommerce_checkout_process', array( $this, 'process_checkout_selection' ), 10, 0 );
 		add_action( 'woocommerce_before_calculate_totals', array( $this, 'force_reward_prices_to_zero' ), 20, 1 );
 		add_filter( 'woocommerce_get_item_data', array( $this, 'display_reward_cart_data' ), 10, 2 );
@@ -71,6 +77,31 @@ class WooCommerce_Checkout_Adapter {
 		add_action( 'woocommerce_order_status_failed', array( $this, 'sync_reward_visual_state' ), 1, 1 );
 	}
 
+	/**
+	 * Render the points estimate inside cart and classic-checkout totals tables.
+	 */
+	public function render_earning_estimate(): void {
+		$cart = WC()->cart;
+		if ( ! $cart ) {
+			return;
+		}
+
+		$points = $this->points_calculator->calculate(
+			$cart->get_total( 'edit' ),
+			$cart->get_shipping_total(),
+			$cart->get_shipping_tax()
+		);
+		?>
+		<tr class="lcter-wcpl-earned-points">
+			<th><?php esc_html_e( 'Puntos que conseguirás', LCTER_WCPL_TEXT_DOMAIN ); ?></th>
+			<td data-title="<?php echo esc_attr__( 'Puntos que conseguirás', LCTER_WCPL_TEXT_DOMAIN ); ?>">
+				<strong><?php echo esc_html( number_format_i18n( $points ) ); ?> <?php esc_html_e( 'puntos', LCTER_WCPL_TEXT_DOMAIN ); ?></strong>
+				<small><?php esc_html_e( 'Estos puntos se añadirán a tu saldo cuando el pedido haya sido pagado.', LCTER_WCPL_TEXT_DOMAIN ); ?></small>
+			</td>
+		</tr>
+		<?php
+	}
+
 	public function render_reward_selector(): void {
 		$cart = WC()->cart;
 		if ( ! $cart ) {
@@ -82,9 +113,20 @@ class WooCommerce_Checkout_Adapter {
 		$choice            = $this->get_posted_choice();
 		$posted_quantities = $this->get_posted_quantities();
 		$posted_quantities = is_array( $posted_quantities ) ? $posted_quantities : array();
+		$balance           = $customer_id > 0 ? $this->points->get_balance( $customer_id ) : 0;
+		$server_feedback    = WC()->session ? (string) WC()->session->get( 'lcter_wcpl_reward_feedback', '' ) : '';
+		if ( '' !== $server_feedback && WC()->session ) {
+			WC()->session->set( 'lcter_wcpl_reward_feedback', null );
+		}
 
 		?>
-		<section class="lcter-wcpl-checkout-rewards">
+		<section
+			class="lcter-wcpl-checkout-rewards"
+			data-balance="<?php echo esc_attr( (string) $balance ); ?>"
+			data-valid-message="<?php echo esc_attr__( 'Puedes canjear los regalos seleccionados.', LCTER_WCPL_TEXT_DOMAIN ); ?>"
+			data-insufficient-message="<?php echo esc_attr__( 'No hay puntos suficientes para añadir otra unidad.', LCTER_WCPL_TEXT_DOMAIN ); ?>"
+		>
+			<noscript><style>.lcter-wcpl-reward-catalog[hidden]{display:block}</style></noscript>
 			<h3><?php esc_html_e( 'Canjear puntos por regalos', LCTER_WCPL_TEXT_DOMAIN ); ?></h3>
 			<?php wp_nonce_field( self::NONCE_ACTION, self::NONCE_NAME ); ?>
 
@@ -99,18 +141,8 @@ class WooCommerce_Checkout_Adapter {
 				<p><?php esc_html_e( 'El subtotal mínimo para canjear regalos es de 60 EUR, IVA incluido y sin portes.', LCTER_WCPL_TEXT_DOMAIN ); ?></p>
 			<?php else : ?>
 				<?php
-				$balance = $this->points->get_balance( $customer_id );
 				$rewards = $this->rewards->get_available_rewards();
 				?>
-				<p>
-					<?php
-					printf(
-						esc_html__( 'Saldo disponible: %s puntos.', LCTER_WCPL_TEXT_DOMAIN ),
-						esc_html( number_format_i18n( $balance ) )
-					);
-					?>
-				</p>
-
 				<?php if ( empty( $rewards ) ) : ?>
 					<p><?php esc_html_e( 'No hay regalos disponibles en este momento.', LCTER_WCPL_TEXT_DOMAIN ); ?></p>
 				<?php else : ?>
@@ -119,7 +151,13 @@ class WooCommerce_Checkout_Adapter {
 						<?php esc_html_e( 'Quiero canjear puntos', LCTER_WCPL_TEXT_DOMAIN ); ?>
 					</label>
 
-					<div class="lcter-wcpl-reward-options">
+					<div class="lcter-wcpl-reward-catalog" <?php echo 'redeem' === $choice ? '' : 'hidden'; ?>>
+						<div class="lcter-wcpl-redemption-summary" aria-live="polite">
+							<p><strong><?php esc_html_e( 'Saldo disponible:', LCTER_WCPL_TEXT_DOMAIN ); ?></strong> <span data-lcter-wcpl-balance><?php echo esc_html( number_format_i18n( $balance ) ); ?></span> <?php esc_html_e( 'puntos', LCTER_WCPL_TEXT_DOMAIN ); ?></p>
+							<p><strong><?php esc_html_e( 'Puntos seleccionados:', LCTER_WCPL_TEXT_DOMAIN ); ?></strong> <span data-lcter-wcpl-selected>0</span> <?php esc_html_e( 'puntos', LCTER_WCPL_TEXT_DOMAIN ); ?></p>
+							<p><strong><?php esc_html_e( 'Saldo restante:', LCTER_WCPL_TEXT_DOMAIN ); ?></strong> <span data-lcter-wcpl-remaining><?php echo esc_html( number_format_i18n( $balance ) ); ?></span> <?php esc_html_e( 'puntos', LCTER_WCPL_TEXT_DOMAIN ); ?></p>
+						</div>
+						<div class="lcter-wcpl-reward-options">
 						<?php foreach ( $rewards as $reward ) : ?>
 							<?php
 							$product = wc_get_product( (int) $reward['product_id'] );
@@ -132,7 +170,7 @@ class WooCommerce_Checkout_Adapter {
 							$max_quantity = $points_cost > 0 ? intdiv( $balance, $points_cost ) : 0;
 							$quantity     = $posted_quantities[ $reward_id ] ?? 0;
 							?>
-							<label class="lcter-wcpl-reward-option">
+							<label class="lcter-wcpl-reward-option" data-reward-id="<?php echo esc_attr( (string) $reward_id ); ?>" data-points-cost="<?php echo esc_attr( (string) $points_cost ); ?>">
 								<span class="lcter-wcpl-reward-thumbnail">
 									<?php echo $this->get_reward_thumbnail_html( $product ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Sanitized by wp_kses_post(). ?>
 								</span>
@@ -146,6 +184,7 @@ class WooCommerce_Checkout_Adapter {
 									);
 									?>
 									</span>
+									<span id="lcter-wcpl-reward-availability-<?php echo esc_attr( (string) $reward_id ); ?>" class="lcter-wcpl-reward-availability" aria-live="polite"></span>
 								</span>
 								<input
 									type="number"
@@ -154,9 +193,12 @@ class WooCommerce_Checkout_Adapter {
 									min="0"
 									max="<?php echo esc_attr( (string) $max_quantity ); ?>"
 									step="1"
+									aria-describedby="lcter-wcpl-reward-availability-<?php echo esc_attr( (string) $reward_id ); ?>"
 								/>
 							</label>
 						<?php endforeach; ?>
+						</div>
+						<p class="lcter-wcpl-reward-feedback<?php echo '' !== $server_feedback ? ' is-error' : ''; ?>" role="status" aria-live="assertive" tabindex="-1"><?php echo esc_html( $server_feedback ); ?></p>
 					</div>
 				<?php endif; ?>
 			<?php endif; ?>
@@ -193,7 +235,7 @@ class WooCommerce_Checkout_Adapter {
 
 		$nonce = isset( $_POST[ self::NONCE_NAME ] ) ? sanitize_text_field( wp_unslash( $_POST[ self::NONCE_NAME ] ) ) : '';
 		if ( ! $nonce || ! wp_verify_nonce( $nonce, self::NONCE_ACTION ) ) {
-			wc_add_notice( __( 'No se pudo validar la selección de regalos. Recarga el checkout e inténtalo de nuevo.', LCTER_WCPL_TEXT_DOMAIN ), 'error' );
+			$this->add_checkout_error( __( 'No se pudo validar la selección de regalos. Recarga el checkout e inténtalo de nuevo.', LCTER_WCPL_TEXT_DOMAIN ) );
 			return;
 		}
 
@@ -204,13 +246,13 @@ class WooCommerce_Checkout_Adapter {
 		}
 
 		if ( 'redeem' !== $choice ) {
-			wc_add_notice( __( 'Selecciona si deseas canjear puntos.', LCTER_WCPL_TEXT_DOMAIN ), 'error' );
+			$this->add_checkout_error( __( 'Selecciona si deseas canjear puntos.', LCTER_WCPL_TEXT_DOMAIN ) );
 			return;
 		}
 
 		$quantities = $this->get_posted_quantities();
 		if ( false === $quantities ) {
-			wc_add_notice( __( 'Las cantidades de los regalos no son válidas.', LCTER_WCPL_TEXT_DOMAIN ), 'error' );
+			$this->add_checkout_error( __( 'Las cantidades de los regalos no son válidas.', LCTER_WCPL_TEXT_DOMAIN ) );
 			return;
 		}
 
@@ -221,13 +263,13 @@ class WooCommerce_Checkout_Adapter {
 		);
 
 		if ( ! $validation['valid'] ) {
-			wc_add_notice( $this->get_validation_message( $validation['error'] ), 'error' );
+			$this->add_checkout_error( $this->get_validation_message( $validation['error'] ) );
 			return;
 		}
 
 		if ( ! $this->sync_reward_cart_items( $cart, $validation['items'] ) ) {
 			$this->remove_reward_cart_items( $cart );
-			wc_add_notice( __( 'No se pudieron añadir los regalos seleccionados al pedido.', LCTER_WCPL_TEXT_DOMAIN ), 'error' );
+			$this->add_checkout_error( __( 'No se pudieron añadir los regalos seleccionados al pedido.', LCTER_WCPL_TEXT_DOMAIN ) );
 			return;
 		}
 
@@ -660,7 +702,7 @@ class WooCommerce_Checkout_Adapter {
 			'invalid_customer'     => __( 'Debes iniciar sesión para canjear puntos.', LCTER_WCPL_TEXT_DOMAIN ),
 			'minimum_not_met'      => __( 'El subtotal mínimo para canjear regalos es de 60 EUR, IVA incluido y sin portes.', LCTER_WCPL_TEXT_DOMAIN ),
 			'invalid_quantity'     => __( 'Las cantidades de los regalos no son válidas.', LCTER_WCPL_TEXT_DOMAIN ),
-			'reward_unavailable'   => __( 'Uno de los regalos seleccionados ya no está disponible.', LCTER_WCPL_TEXT_DOMAIN ),
+			'reward_unavailable'   => __( 'Uno de los regalos seleccionados ya no está disponible. Revisa tu selección.', LCTER_WCPL_TEXT_DOMAIN ),
 			'invalid_cost'         => __( 'No se pudo validar el coste en puntos de los regalos.', LCTER_WCPL_TEXT_DOMAIN ),
 			'empty_selection'      => __( 'Selecciona al menos una unidad de regalo o elige no canjear puntos.', LCTER_WCPL_TEXT_DOMAIN ),
 			'insufficient_balance' => __( 'No tienes puntos suficientes para los regalos seleccionados.', LCTER_WCPL_TEXT_DOMAIN ),
@@ -668,5 +710,15 @@ class WooCommerce_Checkout_Adapter {
 		);
 
 		return $messages[ $error ] ?? __( 'No se pudo validar el canje de regalos.', LCTER_WCPL_TEXT_DOMAIN );
+	}
+
+	/**
+	 * Add the blocking WooCommerce notice and retain it for local feedback.
+	 */
+	private function add_checkout_error( string $message ): void {
+		wc_add_notice( $message, 'error' );
+		if ( WC()->session ) {
+			WC()->session->set( 'lcter_wcpl_reward_feedback', $message );
+		}
 	}
 }

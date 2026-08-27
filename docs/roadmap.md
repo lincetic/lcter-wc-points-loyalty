@@ -80,6 +80,9 @@ Estado: completado para UC-003, UC-004 y UC-005 en el checkout clásico.
 
 * Selector de uno o varios regalos y varias unidades: completado.
 * Miniaturas de producto responsive con placeholder nativo en el selector: completado.
+* Estimación de puntos en carrito y checkout con cálculo compartido: completado.
+* Catálogo oculto por defecto, saldo conjunto, resumen y feedback local: completado.
+* Conservación y recálculo tras `updated_checkout`: completado.
 * Opción “No canjear mis puntos”: completado.
 * Mínimo de 60 EUR sobre subtotal con IVA y sin portes: completado.
 * Validación de catálogo, cantidades, coste de base de datos y saldo: completado.

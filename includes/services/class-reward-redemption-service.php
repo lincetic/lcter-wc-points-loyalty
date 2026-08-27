@@ -73,6 +73,10 @@ class Reward_Redemption_Service {
 			}
 
 			$reward    = $available[ $reward_id ];
+			$product   = function_exists( 'wc_get_product' ) ? wc_get_product( (int) $reward['product_id'] ) : null;
+			if ( ! $product || ! $product->is_purchasable() || ! $product->is_in_stock() || ! $product->has_enough_stock( $quantity ) ) {
+				return $this->invalid_result( 'reward_unavailable' );
+			}
 			$cost_each = (int) $reward['points_cost'];
 			if ( $cost_each <= 0 || $quantity > intdiv( PHP_INT_MAX, $cost_each ) ) {
 				return $this->invalid_result( 'invalid_cost' );
