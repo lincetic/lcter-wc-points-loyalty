@@ -127,12 +127,12 @@ class WooCommerce_Checkout_Adapter {
 			data-insufficient-message="<?php echo esc_attr__( 'No hay puntos suficientes para añadir otra unidad.', LCTER_WCPL_TEXT_DOMAIN ); ?>"
 		>
 			<noscript><style>.lcter-wcpl-reward-catalog[hidden]{display:block}</style></noscript>
-			<h3><?php esc_html_e( 'Canjear puntos por regalos', LCTER_WCPL_TEXT_DOMAIN ); ?></h3>
+			<h3><?php esc_html_e( '¿Quieres canjear tus puntos por regalos?', LCTER_WCPL_TEXT_DOMAIN ); ?></h3>
 			<?php wp_nonce_field( self::NONCE_ACTION, self::NONCE_NAME ); ?>
 
 			<label>
 				<input type="radio" name="lcter_wcpl_redemption_choice" value="none" <?php checked( 'none', $choice ); ?> />
-				<?php esc_html_e( 'No canjear mis puntos', LCTER_WCPL_TEXT_DOMAIN ); ?>
+				<?php esc_html_e( 'No quiero canjear mis puntos', LCTER_WCPL_TEXT_DOMAIN ); ?>
 			</label>
 
 			<?php if ( $customer_id <= 0 ) : ?>
@@ -148,7 +148,7 @@ class WooCommerce_Checkout_Adapter {
 				<?php else : ?>
 					<label>
 						<input type="radio" name="lcter_wcpl_redemption_choice" value="redeem" <?php checked( 'redeem', $choice ); ?> />
-						<?php esc_html_e( 'Quiero canjear puntos', LCTER_WCPL_TEXT_DOMAIN ); ?>
+						<?php esc_html_e( 'Sí quiero canjear mis puntos', LCTER_WCPL_TEXT_DOMAIN ); ?>
 					</label>
 
 					<div class="lcter-wcpl-reward-catalog" <?php echo 'redeem' === $choice ? '' : 'hidden'; ?>>
