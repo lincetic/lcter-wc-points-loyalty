@@ -10,6 +10,8 @@ declare( strict_types=1 );
 namespace LCTER_WCPL\Tests\Unit;
 
 use LCTER_WCPL\Adapters\WooCommerce_Checkout_Adapter;
+use LCTER_WCPL\Repositories\Rewards_Repository;
+use LCTER_WCPL\Services\Rewards_Service;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -23,6 +25,7 @@ final class WooCommerceCheckoutAdapterHookTest extends TestCase {
 		$GLOBALS['lcter_wcpl_test_actions'] = array();
 		$GLOBALS['lcter_wcpl_test_filters'] = array();
 		$GLOBALS['lcter_wcpl_test_woocommerce'] = (object) array( 'cart' => null, 'session' => null );
+		$GLOBALS['lcter_wcpl_test_notices'] = array();
 	}
 
 	/**
@@ -64,6 +67,64 @@ final class WooCommerceCheckoutAdapterHookTest extends TestCase {
 
 		self::assertNotNull( $this->find_action( 'woocommerce_cart_totals_before_order_total', 'render_earning_estimate' ) );
 		self::assertNotNull( $this->find_action( 'woocommerce_review_order_before_order_total', 'render_earning_estimate' ) );
+	}
+
+	public function test_exclusive_product_protection_is_registered_for_all_cart_routes(): void {
+		$adapter = new WooCommerce_Checkout_Adapter();
+		$adapter->register_hooks();
+
+		self::assertNotNull( $this->find_filter( 'woocommerce_add_to_cart_validation', 'validate_exclusive_product_addition' ) );
+		self::assertNotNull( $this->find_action( 'woocommerce_check_cart_items', 'validate_exclusive_reward_cart_items' ) );
+	}
+
+	public function test_normal_addition_of_exclusive_product_is_blocked_without_affecting_other_products(): void {
+		$repository = new class() extends Rewards_Repository {
+			public function find_by_product( int $product_id ): ?array {
+				return 10 === $product_id
+					? array( 'id' => 7, 'product_id' => 10, 'points_cost' => 500, 'exclusive_redemption' => 1 )
+					: null;
+			}
+		};
+		$adapter = new WooCommerce_Checkout_Adapter( null, new Rewards_Service( $repository ) );
+
+		self::assertFalse( $adapter->validate_exclusive_product_addition( true, 10 ) );
+		self::assertTrue( $adapter->validate_exclusive_product_addition( true, 11 ) );
+		self::assertCount( 1, $GLOBALS['lcter_wcpl_test_notices'] );
+		self::assertSame( 'error', $GLOBALS['lcter_wcpl_test_notices'][0]['type'] );
+	}
+
+	public function test_exclusive_product_already_in_cart_requires_server_signed_reward_line(): void {
+		$repository = new class() extends Rewards_Repository {
+			public function find_by_product( int $product_id ): ?array {
+				return 10 === $product_id
+					? array( 'id' => 7, 'product_id' => 10, 'points_cost' => 500, 'exclusive_redemption' => 1 )
+					: null;
+			}
+			public function find( int $reward_id ): ?array {
+				return 7 === $reward_id ? $this->find_by_product( 10 ) : null;
+			}
+		};
+		$GLOBALS['lcter_wcpl_test_woocommerce']->cart = new class() {
+			public function get_cart(): array {
+				return array(
+					array(
+						'product_id'                    => 10,
+						'quantity'                      => 1,
+						'_lcter_wcpl_is_reward'         => '1',
+						'_lcter_wcpl_reward_id'         => 7,
+						'_lcter_wcpl_points_cost_each'  => 500,
+						'_lcter_wcpl_points_cost_total' => 500,
+						'_lcter_wcpl_reward_signature'  => 'forged-client-value',
+					),
+				);
+			}
+		};
+
+		$adapter = new WooCommerce_Checkout_Adapter( null, new Rewards_Service( $repository ) );
+		$adapter->validate_exclusive_reward_cart_items();
+
+		self::assertCount( 1, $GLOBALS['lcter_wcpl_test_notices'] );
+		self::assertStringContainsString( 'canje válido', $GLOBALS['lcter_wcpl_test_notices'][0]['message'] );
 	}
 
 	/**
@@ -174,6 +235,16 @@ final class WooCommerceCheckoutAdapterHookTest extends TestCase {
 				$method === $action['callback'][1]
 			) {
 				return $action;
+			}
+		}
+
+		return null;
+	}
+
+	private function find_filter( string $hook_name, string $method ): ?array {
+		foreach ( $GLOBALS['lcter_wcpl_test_filters'] as $filter ) {
+			if ( $hook_name === $filter['hook_name'] && is_array( $filter['callback'] ) && $method === $filter['callback'][1] ) {
+				return $filter;
 			}
 		}
 

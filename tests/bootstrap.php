@@ -77,6 +77,24 @@ if ( ! function_exists( 'WC' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wc_add_notice' ) ) {
+	function wc_add_notice( string $message, string $type = 'success' ): void {
+		$GLOBALS['lcter_wcpl_test_notices'][] = array( 'message' => $message, 'type' => $type );
+	}
+}
+
+if ( ! function_exists( 'get_current_user_id' ) ) {
+	function get_current_user_id(): int {
+		return (int) ( $GLOBALS['lcter_wcpl_test_current_user_id'] ?? 0 );
+	}
+}
+
+if ( ! function_exists( 'wp_hash' ) ) {
+	function wp_hash( string $data, string $scheme = 'auth' ): string {
+		return hash_hmac( 'sha256', $data, 'test-' . $scheme );
+	}
+}
+
 if ( ! function_exists( 'admin_url' ) ) {
 	/**
 	 * Return a deterministic admin URL during isolated tests.

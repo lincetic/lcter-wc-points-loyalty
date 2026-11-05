@@ -399,3 +399,10 @@ mediante `FeaturesUtil`, después de verificar que la clase existe. Se aisló en
 Decisión: `Purchase_Points_Calculator` recibe total, portes e IVA de portes y devuelve centavos elegibles. El pedido pagado y las vistas de carrito/checkout usan exactamente esta clase para evitar divergencias.
 
 El selector se mejora progresivamente: PHP entrega un catálogo funcional y valida siempre la petición; JavaScript oculta o muestra, limpia cantidades al no canjear, calcula el saldo global y restaura una selección válida después de los fragments AJAX. Los handlers son delegados y tienen namespace para impedir duplicados.
+# TD-031 - Exclusividad De Productos Para Canje
+
+Decisión: `lcter_wcpl_rewards.exclusive_redemption` identifica individualmente los productos que no pueden comprarse por el flujo ordinario. El valor por defecto es cero y la migración `1.4.0` no cambia rewards existentes.
+
+`woocommerce_add_to_cart_validation` bloquea la incorporación ordinaria por URL, formulario, AJAX y Store API. `woocommerce_check_cart_items` vuelve a impedir el checkout si la línea ya estaba en el carrito. El único bypass es un estado interno y temporal del adaptador durante `sync_reward_cart_items()`, después de la validación completa del servicio de canje.
+
+La línea autorizada lleva una firma `wp_hash` sobre reward, producto y coste obtenidos en servidor. En checkout se exige la firma, se compara de nuevo con el catálogo y se revalida la selección mediante `Reward_Redemption_Service`. Los parámetros o metadatos enviados por el cliente no pueden producir esa firma.

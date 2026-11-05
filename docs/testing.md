@@ -417,3 +417,15 @@ idempotencia y ciclos.
 # UX De Compra Clásica
 
 La suite automatizada cubre la calculadora compartida con 60,15 EUR y exclusión de portes, registro de los hooks de carrito/checkout, catálogo oculto y feedback local, handlers `update_checkout`/`updated_checkout`, saldo conjunto 20.000 con rewards de 8.000/5.000/4.000, rehabilitación al reducir y rechazo PHP de saldo o stock insuficientes. Las pruebas JavaScript se ejecutan con `node --test tests/js/reward-selection.test.js`.
+# Pruebas De Regalos Exclusivos
+
+Casos:
+
+* Un producto exclusivo añadido por URL, formulario, AJAX o Store API es rechazado por la validación común de WooCommerce.
+* Una línea exclusiva ordinaria que ya estaba en el carrito bloquea el checkout.
+* Una línea con indicadores de reward manipulados y sin firma válida bloquea el checkout.
+* El canje creado por LCTER después de validar saldo, mínimo, catálogo, stock y cantidad sí puede añadirse y mantiene precio cero.
+* Un reward no exclusivo puede comprarse y canjearse.
+* Un producto de precio cero sin la marca exclusiva no se bloquea.
+
+La prueba unitaria `WooCommerceCheckoutAdapterHookTest` comprueba el registro de ambos puntos de control y que la adición normal de un producto exclusivo se rechaza sin afectar a otro producto.

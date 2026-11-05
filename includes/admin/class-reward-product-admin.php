@@ -91,6 +91,15 @@ class Reward_Product_Admin {
 						'wrapper_class' => 'lcter-wcpl-reward-field',
 					)
 				);
+				woocommerce_wp_checkbox(
+					array(
+						'id'            => 'lcter_wcpl_reward_exclusive',
+						'label'         => __( 'Exclusivo para canje por puntos', LCTER_WCPL_TEXT_DOMAIN ),
+						'description'   => __( 'Impide comprar este producto por los canales normales de WooCommerce; solo permite el canje validado por LCTER.', LCTER_WCPL_TEXT_DOMAIN ),
+						'value'         => $reward && ! empty( $reward['exclusive_redemption'] ) ? 'yes' : 'no',
+						'wrapper_class' => 'lcter-wcpl-reward-field',
+					)
+				);
 				woocommerce_wp_text_input(
 					array(
 						'id'                => 'lcter_wcpl_reward_points_cost',
@@ -175,6 +184,7 @@ class Reward_Product_Admin {
 		$points_cost = isset( $_POST['lcter_wcpl_reward_points_cost'] ) ? absint( sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_reward_points_cost'] ) ) ) : 0;
 		$active      = isset( $_POST['lcter_wcpl_reward_active'] ) && 'yes' === sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_reward_active'] ) ) ? 1 : 0;
 		$visible     = $active && isset( $_POST['lcter_wcpl_reward_visible'] ) && 'yes' === sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_reward_visible'] ) ) ? 1 : 0;
+		$exclusive   = isset( $_POST['lcter_wcpl_reward_exclusive'] ) && 'yes' === sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_reward_exclusive'] ) ) ? 1 : 0;
 		$sort_order  = isset( $_POST['lcter_wcpl_reward_sort_order'] ) ? (int) sanitize_text_field( wp_unslash( $_POST['lcter_wcpl_reward_sort_order'] ) ) : 0;
 		$starts_at   = $this->get_datetime_from_request( 'lcter_wcpl_reward_starts_at' );
 		$ends_at     = $this->get_datetime_from_request( 'lcter_wcpl_reward_ends_at' );
@@ -190,6 +200,7 @@ class Reward_Product_Admin {
 				'points_cost' => $points_cost,
 				'active'      => $active,
 				'visible_in_checkout' => $visible,
+				'exclusive_redemption' => $exclusive,
 				'sort_order'  => $sort_order,
 				'starts_at'   => $starts_at,
 				'ends_at'     => $ends_at,

@@ -206,3 +206,11 @@ fechas e historial.
 Carrito, checkout y pedido pagado calculan los puntos generados con la misma regla compartida: total con IVA y descuentos menos portes e IVA de portes. La estimación no financia el canje del pedido actual.
 
 El catálogo permanece oculto mientras se elige no canjear. La suma de todas las cantidades seleccionadas nunca puede superar el saldo existente; JavaScript ofrece feedback inmediato y el servidor vuelve a validar catálogo, producto, stock, costes, cantidades y saldo conjunto.
+
+# BR-025 - Regalos exclusivos para canje
+
+Cada reward puede marcarse como exclusivo para canje por puntos. La opción está desactivada por defecto para conservar el comportamiento de los rewards existentes.
+
+Un producto exclusivo no puede añadirse ni finalizarse como compra ordinaria por ningún canal de WooCommerce. Solo se admite la línea creada internamente por LCTER después de validar cliente, saldo, pedido mínimo, disponibilidad, existencias, cantidad y coste en puntos contra los datos del servidor.
+
+Los rewards no exclusivos y los productos de precio cero que no tengan esta marca conservan el comportamiento normal de WooCommerce.

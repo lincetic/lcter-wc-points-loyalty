@@ -94,11 +94,12 @@ class Rewards_Repository {
 			'points_cost' => $points_cost,
 			'active'      => empty( $reward['active'] ) ? 0 : 1,
 			'visible_in_checkout' => ! empty( $reward['active'] ) && ! empty( $reward['visible_in_checkout'] ) ? 1 : 0,
+			'exclusive_redemption' => empty( $reward['exclusive_redemption'] ) ? 0 : 1,
 			'sort_order'  => isset( $reward['sort_order'] ) ? (int) $reward['sort_order'] : 0,
 			'starts_at'   => $starts_at,
 			'ends_at'     => $ends_at,
 		);
-		$formats = array( '%d', '%d', '%d', '%d', '%d', '%s', '%s' );
+		$formats = array( '%d', '%d', '%d', '%d', '%d', '%d', '%s', '%s' );
 
 		if ( 0 === $reward_id ) {
 			$existing  = $this->find_by_product( $product_id );

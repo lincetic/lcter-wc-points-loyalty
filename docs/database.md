@@ -170,3 +170,7 @@ Se añade un índice independiente; `product_id` continúa siendo único y
 que exista en `wp_posts`. No hay claves foráneas ni joins contra tablas legacy o
 tablas físicas HPOS. `customer_points`, `transactions`, `rewards` y
 `order_rewards` permanecen bajo responsabilidad del plugin.
+
+# Exclusividad de rewards (esquema 1.4.0)
+
+`lcter_wcpl_rewards.exclusive_redemption TINYINT(1) NOT NULL DEFAULT 0` identifica los productos que solo pueden obtenerse mediante el canje validado por LCTER. La columna tiene un índice propio y el valor por defecto conserva el comportamiento de todas las filas existentes.

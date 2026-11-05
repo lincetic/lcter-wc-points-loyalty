@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Database {
 	const SCHEMA_VERSION_OPTION = 'lcter_wcpl_schema_version';
-	const SCHEMA_VERSION        = '1.3.0';
+	const SCHEMA_VERSION        = '1.4.0';
 
 	const TABLE_SUFFIX_CUSTOMER_POINTS = 'customer_points';
 	const TABLE_SUFFIX_TRANSACTIONS    = 'transactions';
@@ -120,6 +120,7 @@ class Database {
 			points_cost INT(11) NOT NULL,
 			active TINYINT(1) NOT NULL DEFAULT 1,
 			visible_in_checkout TINYINT(1) NOT NULL DEFAULT 1,
+			exclusive_redemption TINYINT(1) NOT NULL DEFAULT 0,
 			sort_order INT(11) NOT NULL DEFAULT 0,
 			starts_at DATETIME NULL,
 			ends_at DATETIME NULL,
@@ -129,6 +130,7 @@ class Database {
 			UNIQUE KEY product_id (product_id),
 			KEY active (active),
 			KEY visible_in_checkout (visible_in_checkout),
+			KEY exclusive_redemption (exclusive_redemption),
 			KEY starts_at (starts_at),
 			KEY ends_at (ends_at),
 			KEY sort_order (sort_order)

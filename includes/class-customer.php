@@ -47,7 +47,7 @@ class Customer {
 
 		?>
 		<div class="lcter-wcpl-dashboard-section">
-			<h2><?php esc_html_e( 'Tus Puntos de Lealtad', LCTER_WCPL_TEXT_DOMAIN ); ?></h2>
+			<h2><?php esc_html_e( 'Tus Puntos de Fidelidad', LCTER_WCPL_TEXT_DOMAIN ); ?></h2>
 			<p><?php printf( esc_html__( 'Tienes %d puntos disponibles.', LCTER_WCPL_TEXT_DOMAIN ), intval( $points ) ); ?></p>
 		</div>
 		<?php

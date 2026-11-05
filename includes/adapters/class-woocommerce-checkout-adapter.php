@@ -35,6 +35,7 @@ class WooCommerce_Checkout_Adapter {
 	private Rewards_Service $rewards;
 	private Points_Service $points;
 	private Purchase_Points_Calculator $points_calculator;
+	private bool $adding_validated_reward = false;
 
 	public function __construct(
 		?Reward_Redemption_Service $redemption = null,
@@ -53,6 +54,8 @@ class WooCommerce_Checkout_Adapter {
 		add_action( 'woocommerce_cart_totals_before_order_total', array( $this, 'render_earning_estimate' ), 10, 0 );
 		add_action( 'woocommerce_review_order_before_order_total', array( $this, 'render_earning_estimate' ), 10, 0 );
 		add_action( 'woocommerce_checkout_process', array( $this, 'process_checkout_selection' ), 10, 0 );
+		add_filter( 'woocommerce_add_to_cart_validation', array( $this, 'validate_exclusive_product_addition' ), 10, 6 );
+		add_action( 'woocommerce_check_cart_items', array( $this, 'validate_exclusive_reward_cart_items' ), 10, 0 );
 		add_action( 'woocommerce_before_calculate_totals', array( $this, 'force_reward_prices_to_zero' ), 20, 1 );
 		add_filter( 'woocommerce_get_item_data', array( $this, 'display_reward_cart_data' ), 10, 2 );
 		add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'add_order_item_metadata' ), 10, 4 );
@@ -282,9 +285,81 @@ class WooCommerce_Checkout_Adapter {
 		}
 
 		foreach ( $cart->get_cart() as $cart_item ) {
-			if ( ! empty( $cart_item['_lcter_wcpl_is_reward'] ) && isset( $cart_item['data'] ) ) {
+			if ( $this->is_legitimate_reward_cart_item( $cart_item ) && isset( $cart_item['data'] ) ) {
 				$cart_item['data']->set_price( 0 );
 			}
+		}
+	}
+
+	/**
+	 * Block exclusive products from every normal WooCommerce add-to-cart route.
+	 *
+	 * @param bool   $passed Validation accumulated by WooCommerce.
+	 * @param int    $product_id Product ID.
+	 * @param int    $quantity Requested quantity.
+	 * @param int    $variation_id Variation ID.
+	 * @param array  $variations Variation attributes.
+	 * @param array  $cart_item_data Requested cart item data.
+	 * @return bool
+	 */
+	public function validate_exclusive_product_addition( bool $passed, int $product_id, int $quantity = 1, int $variation_id = 0, array $variations = array(), array $cart_item_data = array() ): bool {
+		unset( $quantity, $variations, $cart_item_data );
+		$reward       = $variation_id > 0 ? $this->rewards->get_reward_by_product( $variation_id ) : null;
+		$reward       = $reward ?? $this->rewards->get_reward_by_product( $product_id );
+		if ( ! $reward || empty( $reward['exclusive_redemption'] ) || $this->adding_validated_reward ) {
+			return $passed;
+		}
+
+		wc_add_notice( __( 'Este producto solo puede obtenerse mediante un canje válido de puntos.', LCTER_WCPL_TEXT_DOMAIN ), 'error' );
+		return false;
+	}
+
+	/**
+	 * Prevent checkout with exclusive products already present or forged reward data.
+	 */
+	public function validate_exclusive_reward_cart_items(): void {
+		$cart = WC()->cart;
+		if ( ! $cart ) {
+			return;
+		}
+
+		$quantities   = array();
+		$has_exclusive = false;
+		foreach ( $cart->get_cart() as $cart_item ) {
+			$product_id = isset( $cart_item['product_id'] ) ? (int) $cart_item['product_id'] : 0;
+			$reward     = $product_id > 0 ? $this->rewards->get_reward_by_product( $product_id ) : null;
+			if ( $reward && ! empty( $reward['exclusive_redemption'] ) ) {
+				$has_exclusive = true;
+				if ( ! $this->is_legitimate_reward_cart_item( $cart_item ) ) {
+					$this->add_checkout_error( __( 'Los productos exclusivos solo pueden finalizarse mediante un canje válido de puntos.', LCTER_WCPL_TEXT_DOMAIN ) );
+					return;
+				}
+			}
+
+			if ( ! empty( $cart_item['_lcter_wcpl_is_reward'] ) ) {
+				if ( ! $this->is_legitimate_reward_cart_item( $cart_item ) ) {
+					$this->add_checkout_error( __( 'Se detectó una línea de regalo no válida. Elimínala del carrito y vuelve a seleccionar el canje.', LCTER_WCPL_TEXT_DOMAIN ) );
+					return;
+				}
+				$quantities[ (int) $cart_item['_lcter_wcpl_reward_id'] ] = (int) $cart_item['quantity'];
+			}
+		}
+
+		if ( ! $has_exclusive ) {
+			return;
+		}
+		if ( empty( $quantities ) ) {
+			$this->add_checkout_error( __( 'Los productos exclusivos solo pueden finalizarse mediante un canje válido de puntos.', LCTER_WCPL_TEXT_DOMAIN ) );
+			return;
+		}
+
+		$validation = $this->redemption->validate_selection(
+			get_current_user_id(),
+			$quantities,
+			$this->get_eligible_subtotal_cents( $cart )
+		);
+		if ( ! $validation['valid'] ) {
+			$this->add_checkout_error( $this->get_validation_message( (string) $validation['error'] ) );
 		}
 	}
 
@@ -608,18 +683,24 @@ class WooCommerce_Checkout_Adapter {
 				return false;
 			}
 
-			$cart_item_key = $cart->add_to_cart(
-				(int) $item['product_id'],
-				(int) $item['quantity'],
-				0,
-				array(),
-				array(
-					'_lcter_wcpl_is_reward'         => '1',
-					'_lcter_wcpl_reward_id'         => (int) $reward_id,
-					'_lcter_wcpl_points_cost_each'  => (int) $item['points_cost_each'],
-					'_lcter_wcpl_points_cost_total' => (int) $item['points_cost_total'],
-				)
-			);
+			$this->adding_validated_reward = true;
+			try {
+				$cart_item_key = $cart->add_to_cart(
+					(int) $item['product_id'],
+					(int) $item['quantity'],
+					0,
+					array(),
+					array(
+						'_lcter_wcpl_is_reward'         => '1',
+						'_lcter_wcpl_reward_id'         => (int) $reward_id,
+						'_lcter_wcpl_points_cost_each'  => (int) $item['points_cost_each'],
+						'_lcter_wcpl_points_cost_total' => (int) $item['points_cost_total'],
+						'_lcter_wcpl_reward_signature'  => $this->reward_cart_signature( (int) $reward_id, (int) $item['product_id'], (int) $item['points_cost_each'] ),
+					)
+				);
+			} finally {
+				$this->adding_validated_reward = false;
+			}
 
 			if ( ! $cart_item_key ) {
 				return false;
@@ -627,6 +708,24 @@ class WooCommerce_Checkout_Adapter {
 		}
 
 		return true;
+	}
+
+	private function is_legitimate_reward_cart_item( array $cart_item ): bool {
+		$reward_id  = isset( $cart_item['_lcter_wcpl_reward_id'] ) ? (int) $cart_item['_lcter_wcpl_reward_id'] : 0;
+		$product_id = isset( $cart_item['product_id'] ) ? (int) $cart_item['product_id'] : 0;
+		$cost_each  = isset( $cart_item['_lcter_wcpl_points_cost_each'] ) ? (int) $cart_item['_lcter_wcpl_points_cost_each'] : 0;
+		$signature  = isset( $cart_item['_lcter_wcpl_reward_signature'] ) ? (string) $cart_item['_lcter_wcpl_reward_signature'] : '';
+		$reward     = $reward_id > 0 ? $this->rewards->get_reward( $reward_id ) : null;
+
+		return $reward
+			&& $product_id === (int) $reward['product_id']
+			&& $cost_each === (int) $reward['points_cost']
+			&& '' !== $signature
+			&& hash_equals( $this->reward_cart_signature( $reward_id, $product_id, $cost_each ), $signature );
+	}
+
+	private function reward_cart_signature( int $reward_id, int $product_id, int $cost_each ): string {
+		return wp_hash( $reward_id . '|' . $product_id . '|' . $cost_each, 'nonce' );
 	}
 
 	private function remove_reward_cart_items( $cart ): void {
