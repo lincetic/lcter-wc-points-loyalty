@@ -19,6 +19,8 @@ if ( '1' === $remove_data ) {
 	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}lcter_wcpl_transactions" );
 	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}lcter_wcpl_rewards" );
 	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}lcter_wcpl_order_rewards" );
+	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}lcter_wcpl_initial_bonus_targets" );
+	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}lcter_wcpl_initial_bonus_runs" );
 
 	delete_option( 'lcter_wcpl_points_expiry_days' );
 	delete_option( 'lcter_wcpl_initial_bonus_points' );

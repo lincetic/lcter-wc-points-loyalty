@@ -61,6 +61,28 @@ final class PointsServiceTest extends TestCase {
 		self::assertCount( 1, $transactions->rows );
 	}
 
+	public function test_initial_bonus_run_attribution_is_part_of_inserted_transaction(): void {
+		$balances     = new In_Memory_Customer_Points_Repository( 0 );
+		$transactions = new In_Memory_Transactions_Repository();
+		$service      = new Points_Service( $balances, $transactions, new In_Memory_Transaction_Manager() );
+
+		$result = $service->add_points_with_status(
+			7,
+			10000,
+			'initial_bonus',
+			null,
+			null,
+			'admin_initial_bonus',
+			'Inicial.',
+			array( 'initial_bonus_run_id' => 42 ),
+			99,
+			'initial_bonus:7'
+		);
+
+		self::assertSame( Points_Service::RESULT_ADDED, $result );
+		self::assertSame( 42, $transactions->rows[0]['initial_bonus_run_id'] );
+	}
+
 	public function test_cancelled_order_reversal_is_atomic_and_idempotent(): void {
 		$balances     = new In_Memory_Customer_Points_Repository( 1000 );
 		$transactions = new In_Memory_Transactions_Repository();

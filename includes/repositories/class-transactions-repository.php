@@ -209,8 +209,9 @@ class Transactions_Repository {
 				'metadata'        => $metadata,
 				'created_by'      => $transaction['created_by'] ?? null,
 				'idempotency_key' => $transaction['idempotency_key'] ?? null,
+				'initial_bonus_run_id' => $transaction['initial_bonus_run_id'] ?? null,
 			),
-			array( '%d', '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%s', '%s', '%d', '%s' )
+			array( '%d', '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%s', '%s', '%d', '%s', '%d' )
 		);
 	}
 

@@ -66,9 +66,11 @@ class Loader {
 		require_once LCTER_WCPL_INCLUDES_DIR . 'repositories/class-transactions-repository.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'repositories/class-rewards-repository.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'repositories/class-order-rewards-repository.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'repositories/class-initial-bonus-runs-repository.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'services/class-points-service.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'services/class-purchase-points-calculator.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'services/class-initial-bonus-service.php';
+		require_once LCTER_WCPL_INCLUDES_DIR . 'services/class-initial-bonus-batch-service.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'services/class-order-cancellation-service.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'services/class-loyalty-movements-restoration-service.php';
 		require_once LCTER_WCPL_INCLUDES_DIR . 'services/class-rewards-service.php';

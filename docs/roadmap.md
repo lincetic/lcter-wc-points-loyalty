@@ -138,6 +138,7 @@ Estado de Fase 6: completado para UC-007 con criterio inicial limitado al rol Wo
 * Accion manual en el dashboard con capacidad `manage_woocommerce`, nonce y confirmacion: completada.
 * Asignacion atomica del importe configurado y transaccion `initial_bonus`: completada.
 * Idempotencia estable `initial_bonus:{customer_id}` y compatibilidad con claves legacy que incluían el importe: completada.
+* Vista previa confirmable, fecha de corte persistente, población congelada, lotes AJAX reanudables, bloqueo nombrado anti-concurrencia e informe durable: completados en esquema 1.6.0; validación MySQL real pendiente.
 * Resumen de procesados, bonificados, omitidos y errores: completado.
 * Ejecucion automatica, WP-CLI y comunicaciones por email: no implementadas.
 

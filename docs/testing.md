@@ -35,6 +35,16 @@ Casos:
 * Cada acumulación genera transacción.
 * Cada canje genera transacción.
 * El bonus inicial usa el importe configurado y genera transacción `initial_bonus`.
+
+### Bonus masivo (1.6.0)
+
+Automatizado: varios lotes, población de 63 usuarios, reanudación, petición repetida/idempotencia, exclusión concurrente, cliente fallido sin perder el resto y reconciliación de puntos. La suite también mantiene las pruebas previas de duplicado histórico y atomicidad/rollback de `Points_Service`.
+
+Pendiente de integración en un WordPress real: migración `dbDelta`, consulta de 15.000 usuarios, `GET_LOCK()` con dos procesos PHP simultáneos, motores/índices en `information_schema` y reconciliación SQL ante transacciones legacy.
+
+Corrección 1.6.0: las pruebas unitarias cubren bloqueo concurrente con token igual y distinto, bloqueo sin expiración temporal, repetición de una petición completada, recuperación de atribución tras fallo de marcado, cuenta eliminada y persistencia de `initial_bonus_run_id` en la operación contable. Siguen pendientes, por requerir MySQL/InnoDB y dos conexiones reales: exclusión de `GET_LOCK()`, liberación al matar PHP, rollback de preparación, validación de `dbDelta` incompleto y reconciliación SQL bajo interrupción real.
+
+Prueba segura en staging: hacer backup; clonar esquema y usuarios anonimizados; configurar una fecha de corte conocida; comprobar motores e índice; abrir únicamente la vista previa y contrastar sus tres recuentos mediante SQL de solo lectura. Para probar lotes sin conceder puntos reales, usar una copia desechable de la base de datos y clientes ficticios, registrar saldos/transacciones antes y después, interrumpir el navegador tras dos lotes, reabrir y reanudar, simular un fallo SQL en un cliente, y verificar que suma de transacciones, saldos e informe coinciden. No pulsar «Preparar e iniciar» sobre datos reales sin autorización posterior.
 * Cambiar el importe configurado no permite un segundo bonus al mismo cliente.
 * Cada ajuste administrativo genera una transacción `manual_adjustment` con delta firmado, motivo y `created_by`.
 * Se guardan `balance_before` y `balance_after`.
