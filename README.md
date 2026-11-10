@@ -10,7 +10,7 @@ access uses WooCommerce CRUD APIs and remains compatible with legacy storage.
 
 LCTER WC Points Loyalty awards points to registered customers after successful WooCommerce payments. Customers can redeem their existing balance for products configured as rewards during the classic checkout.
 
-The plugin uses dedicated tables, atomic balance operations and database-backed idempotency. Version `0.1.0` is under active development.
+The plugin uses dedicated tables, atomic balance operations and database-backed idempotency. Public plugin version: `0.1.1`; database schema version: `1.6.0`.
 
 ## Requirements
 

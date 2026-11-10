@@ -27,7 +27,8 @@ No inventar reglas de negocio. Si una decisión no está definida, registrarla e
 * Plugin: LCTER WC Points Loyalty
 * Plugin URI: https://lincetic.es/
 * Autor: Eddie Rapallo
-* Versión actual: `0.1.0`
+* Versión pública actual: `0.1.1`
+* Versión interna del esquema: `1.6.0`
 * WordPress: 6.5+
 * PHP: 8.1+
 * WooCommerce: 8.0+

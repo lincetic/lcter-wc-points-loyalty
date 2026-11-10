@@ -11,7 +11,8 @@ El sistema mantiene saldo, transacciones, catálogo y regalos canjeados en tabla
 * Plugin: LCTER WC Points Loyalty
 * Plugin URI: https://lincetic.es/
 * Autor: Eddie Rapallo
-* Versión: `0.1.0`
+* Versión pública: `0.1.1`
+* Versión interna del esquema: `1.6.0`
 * WordPress: 6.5+
 * PHP: 8.1+
 * WooCommerce: 8.0+

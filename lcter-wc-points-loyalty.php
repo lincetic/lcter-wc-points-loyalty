@@ -3,7 +3,7 @@
  * Plugin Name: LCTER WC Points Loyalty
  * Plugin URI: https://lincetic.es/
  * Description: Professional WooCommerce loyalty points system with configurable reward catalog.
- * Version: 0.1.0
+ * Version: 0.1.1
  * Author: Eddie Rapallo
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -37,7 +37,7 @@ add_action(
 );
 
 // Define plugin constants.
-define( 'LCTER_WCPL_VERSION', '0.1.0' );
+define( 'LCTER_WCPL_VERSION', '0.1.1' );
 define( 'LCTER_WCPL_PLUGIN_FILE', __FILE__ );
 define( 'LCTER_WCPL_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'LCTER_WCPL_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

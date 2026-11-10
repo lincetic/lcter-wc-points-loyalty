@@ -103,6 +103,10 @@ Este movimiento debe quedar registrado como transacción.
 
 Cada cliente solo puede recibir una transacción `initial_bonus`, aunque el importe configurado cambie después.
 
+El bonus inicial solo corresponde a usuarios con rol WordPress `customer` registrados antes de una fecha y hora de corte fijada explícitamente. Al preparar una ejecución se persiste una copia inmutable de esa población; altas posteriores nunca se incorporan al reanudarla.
+
+El bonus inicial solo corresponde a usuarios con rol WordPress `customer` registrados antes de una fecha y hora de corte fijada explícitamente. Al preparar una ejecución se persiste una copia inmutable de esa población; altas posteriores nunca se incorporan al reanudarla.
+
 ## BR-015 - Clientify
 
 Debe registrarse qué regalos ha elegido cada cliente para que Clientify pueda consultar o recibir esa información.

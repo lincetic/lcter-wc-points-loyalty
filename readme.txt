@@ -8,7 +8,7 @@ Tested up to: 6.9
 Requires Plugins: woocommerce
 WC requires at least: 8.0
 WC tested up to: 10.0
-Stable tag: 0.1.0
+Stable tag: 0.1.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -93,11 +93,22 @@ Data are removed only if the administrator explicitly enables the "Delete plugin
 
 == Upgrade Notice ==
 
+= 0.1.1 =
+
+Production package with resumable initial-bonus processing and database schema 1.6.0.
+
 = 0.1.0 =
 
 Initial development release.
 
 == Changelog ==
+
+= 0.1.1 =
+
+* Added manual, resumable and auditable initial-bonus batch processing.
+* Added fixed cutoff and frozen target population.
+* Added persistent execution reports and concurrency protection.
+* Updated the internal database schema to 1.6.0.
 
 = 0.1.0 =
 

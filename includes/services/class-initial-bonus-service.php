@@ -53,21 +53,7 @@ class Initial_Bonus_Service {
 				continue;
 			}
 
-			$result = $this->points->add_points_with_status(
-				$customer_id,
-				$this->bonus_points,
-				Database::TRANSACTION_INITIAL_BONUS,
-				null,
-				null,
-				'admin_initial_bonus',
-				'Bonus inicial de ' . number_format( $this->bonus_points, 0, ',', '.' ) . ' puntos.',
-				array(
-					'customer_criterion' => 'wordpress_role_customer',
-					'configured_points'  => $this->bonus_points,
-				),
-				$created_by,
-				'initial_bonus:' . $customer_id
-			);
+			$result = $this->apply_one( $customer_id, $created_by );
 
 			if ( Points_Service::RESULT_ADDED === $result ) {
 				++$summary['bonused'];
@@ -79,5 +65,27 @@ class Initial_Bonus_Service {
 		}
 
 		return $summary;
+	}
+
+	/** Apply one atomic, historically compatible bonus operation. */
+	public function apply_one( int $customer_id, int $created_by, array $trace = array() ): string {
+		return $this->points->add_points_with_status(
+			$customer_id,
+			$this->bonus_points,
+			Database::TRANSACTION_INITIAL_BONUS,
+			null,
+			null,
+			'admin_initial_bonus',
+			'Bonus inicial de ' . number_format( $this->bonus_points, 0, ',', '.' ) . ' puntos.',
+			array_merge(
+				array(
+					'customer_criterion' => 'wordpress_role_customer_before_cutoff',
+					'configured_points'  => $this->bonus_points,
+				),
+				$trace
+			),
+			$created_by,
+			'initial_bonus:' . $customer_id
+		);
 	}
 }

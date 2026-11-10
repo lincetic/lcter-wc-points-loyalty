@@ -71,6 +71,12 @@ Tipos:
 * restored_earned
 * restored_redeemed
 
+## Ejecuciones del bonus inicial
+
+`lcter_wcpl_initial_bonus_runs` conserva administrador, corte UTC, importe congelado, estado, bloqueo con caducidad, fechas y contadores reconciliados. `lcter_wcpl_initial_bonus_targets` materializa la población objetivo estable y guarda por cliente estado, intentos y último error. Se justifican ambas tablas porque una opción o transient no permite congelar 15.000 destinatarios, consultar fallos individualmente ni reconciliar/reanudar de forma durable.
+
+La migración 1.6.0 es no destructiva. Añade `transactions.initial_bonus_run_id`, `runs.confirmation_hash` y `runs.last_request_token`; los registros históricos quedan a `NULL` y conservan su idempotencia (`initial_bonus:{customer_id}` y comprobación legacy por cliente/tipo). Antes de preparar una ejecución se comprueban en `information_schema` la existencia y motor InnoDB de las cuatro tablas implicadas, el índice único contable, los índices de objetivos y las columnas nuevas.
+
 ---
 
 ## 3. lcter_wcpl_rewards

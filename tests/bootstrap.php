@@ -89,6 +89,12 @@ if ( ! function_exists( 'get_current_user_id' ) ) {
 	}
 }
 
+if ( ! function_exists( 'get_userdata' ) ) {
+	function get_userdata( int $user_id ) {
+		return in_array( $user_id, $GLOBALS['lcter_wcpl_test_deleted_users'] ?? array(), true ) ? false : (object) array( 'ID' => $user_id );
+	}
+}
+
 if ( ! function_exists( 'wp_hash' ) ) {
 	function wp_hash( string $data, string $scheme = 'auth' ): string {
 		return hash_hmac( 'sha256', $data, 'test-' . $scheme );
@@ -194,11 +200,13 @@ require_once $root . '/includes/repositories/class-transactions-repository.php';
 require_once $root . '/includes/repositories/class-transaction-manager.php';
 require_once $root . '/includes/repositories/class-rewards-repository.php';
 require_once $root . '/includes/repositories/class-order-rewards-repository.php';
+require_once $root . '/includes/repositories/class-initial-bonus-runs-repository.php';
 require_once $root . '/includes/services/class-points-service.php';
 require_once $root . '/includes/services/class-purchase-points-calculator.php';
 require_once $root . '/includes/services/class-rewards-service.php';
 require_once $root . '/includes/services/class-reward-redemption-service.php';
 require_once $root . '/includes/services/class-initial-bonus-service.php';
+require_once $root . '/includes/services/class-initial-bonus-batch-service.php';
 require_once $root . '/includes/services/class-order-cancellation-service.php';
 require_once $root . '/includes/services/class-loyalty-movements-restoration-service.php';
 require_once $root . '/includes/adapters/class-woocommerce-checkout-adapter.php';

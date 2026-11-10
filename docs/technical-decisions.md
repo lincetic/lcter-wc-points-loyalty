@@ -9,14 +9,15 @@ Valores documentados:
 * Nombre: LCTER WC Points Loyalty.
 * Plugin URI: https://lincetic.es/.
 * Autor: Eddie Rapallo.
-* Versión: 0.1.0.
+* Versión pública: 0.1.1.
+* Versión interna del esquema: 1.6.0.
 * PHP: 8.1+.
 * WordPress: 6.5+.
 * WooCommerce: 8.0+.
 * WooCommerce probado hasta: 10.0.
 * Licencia: GPL-2.0-or-later. La cabecera PHP usa la notación equivalente `GPL-2.0+`.
 
-Nota: la cabecera PHP, la constante `LCTER_WCPL_VERSION` y `readme.txt` coinciden en la versión `0.1.0`.
+Nota: la cabecera PHP, la constante `LCTER_WCPL_VERSION` y `readme.txt` coinciden en la versión pública `0.1.1`; `Database::SCHEMA_VERSION` se versiona de forma independiente y permanece en `1.6.0`.
 
 ## TD-001 - Usar Tablas Propias
 
@@ -307,6 +308,18 @@ El reintento de canje vuelve a ejecutar `WooCommerce_Checkout_Adapter::process_p
 ## TD-026 - Opciones De Negocio Mediante Settings API
 
 Decisión: `lcter_wcpl_initial_bonus_points` y `lcter_wcpl_reward_cost_multiplier` son opciones independientes registradas con Settings API. Ambas aceptan únicamente enteros positivos dentro del rango `INT`; sus valores por defecto son 10.000 y 2.000.
+
+## Bonus inicial masivo reanudable
+
+Decisión: sustituir la petición síncrona por AJAX manual en lotes conservadores de 25. La preparación guarda corte, importe, administrador y todos los IDs objetivo. Cada petición adquiere atómicamente un lease de 120 segundos; otro worker no puede avanzar mientras esté vigente y un lease abandonado se recupera después. El navegador solo conduce el proceso: estado, progreso y errores viven en base de datos.
+
+Cada cliente continúa pasando por `Initial_Bonus_Service` y `Points_Service`, conservando transacción, bloqueo e idempotencia contable. Tras cada lote los contadores se recalculan desde objetivos persistidos y las transacciones con clave estable; un fallo queda como `failed`, no como éxito, y exige reanudación explícita. No se usa WP-Cron ni se añade ningún hook de registro.
+
+Corrección 1.6.0: el lease temporal se sustituye por `GET_LOCK()` de MySQL mantenido durante toda la petición. El bloqueo no caduca mientras vive la conexión y se libera automáticamente si el worker muere. El token queda solo como fencing de la escritura final y como idempotencia de la petición completada.
+
+La vista previa pasa a ser la propia ejecución `prepared`: creación de ejecución, `INSERT ... SELECT` de objetivos, total y huella SHA-256 se confirman en una única transacción InnoDB. La confirmación solo cambia a `running` si coinciden ejecución, administrador y huella. El corte, importe e IDs incluidos en la huella no se vuelven a consultar.
+
+Cada movimiento nuevo de bonus almacena `initial_bonus_run_id` en la misma transacción que saldo y movimiento. La reconciliación recupera objetivos desde esa evidencia y suma exclusivamente transacciones atribuidas a la ejecución. Así, una caída después del commit y antes de actualizar el objetivo no reclasifica el abono como histórico. Las cuentas eliminadas después del snapshot se registran como fallo y no crean saldos huérfanos; los cambios de rol no alteran la población congelada.
 
 La pantalla y el guardado usan `manage_woocommerce`. Settings API aporta el nonce; los callbacks de sanitización conservan el último valor válido cuando la entrada no cumple la regla. `Settings` centraliza nombres, valores por defecto y lectura defensiva.
 

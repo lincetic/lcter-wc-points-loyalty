@@ -199,6 +199,10 @@ class Points_Service {
 				throw new \RuntimeException( 'Could not update the customer balance.' );
 			}
 
+			$initial_bonus_run_id = is_array( $metadata ) && isset( $metadata['initial_bonus_run_id'] )
+				? max( 0, (int) $metadata['initial_bonus_run_id'] )
+				: null;
+
 			if ( ! $this->transactions->insert(
 				array(
 					'customer_id'     => $customer_id,
@@ -213,6 +217,7 @@ class Points_Service {
 					'metadata'        => $metadata,
 					'created_by'      => $created_by,
 					'idempotency_key' => $idempotency_key,
+					'initial_bonus_run_id' => $initial_bonus_run_id ?: null,
 				)
 			) ) {
 				throw new \RuntimeException( 'Could not insert the points transaction.' );
