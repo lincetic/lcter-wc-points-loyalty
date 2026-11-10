@@ -76,7 +76,6 @@ class Reward_Catalog_Admin {
 			}
 			if ( $ok ) {
 				++$changed;
-				error_log( sprintf( 'LCTER WCPL reward admin=%d product=%d operation=%s before=%s after=%s', get_current_user_id(), (int) $reward['product_id'], $operation, wp_json_encode( $reward ), wp_json_encode( $service->get_reward( $reward_id ) ) ) );
 			}
 		}
 

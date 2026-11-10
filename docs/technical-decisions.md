@@ -9,14 +9,15 @@ Valores documentados:
 * Nombre: LCTER WC Points Loyalty.
 * Plugin URI: https://lincetic.es/.
 * Autor: Eddie Rapallo.
-* Versión: 0.1.0.
+* Versión pública: 0.1.1.
+* Versión interna del esquema: 1.6.0.
 * PHP: 8.1+.
 * WordPress: 6.5+.
 * WooCommerce: 8.0+.
 * WooCommerce probado hasta: 10.0.
 * Licencia: GPL-2.0-or-later. La cabecera PHP usa la notación equivalente `GPL-2.0+`.
 
-Nota: la cabecera PHP, la constante `LCTER_WCPL_VERSION` y `readme.txt` coinciden en la versión `0.1.0`.
+Nota: la cabecera PHP, la constante `LCTER_WCPL_VERSION` y `readme.txt` coinciden en la versión pública `0.1.1`; `Database::SCHEMA_VERSION` se versiona de forma independiente y permanece en `1.6.0`.
 
 ## TD-001 - Usar Tablas Propias
 

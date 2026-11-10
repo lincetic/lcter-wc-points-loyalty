@@ -395,7 +395,7 @@ Según los ficheros actuales de documentación:
 * PHP 8.1+
 * WooCommerce 8.0+
 
-La cabecera del plugin, la constante `LCTER_WCPL_VERSION` y `readme.txt` coinciden en la versión `0.1.0`. La cabecera y `readme.txt` también coinciden en WooCommerce 8.0+ y probado hasta 10.0.
+La cabecera del plugin, la constante `LCTER_WCPL_VERSION` y `readme.txt` coinciden en la versión pública `0.1.1`, independiente del esquema `1.6.0`. La cabecera y `readme.txt` también coinciden en WooCommerce 8.0+ y probado hasta 10.0.
 # Cobertura del catálogo central
 
 `RewardCatalogServiceTest` cubre límite 12 con 15 filas, cambio a 20, estabilidad
